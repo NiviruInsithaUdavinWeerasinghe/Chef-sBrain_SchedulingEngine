@@ -35,7 +35,7 @@ public class Order implements Comparable<Order> {
 
     @Override
     public int compareTo(Order other) {
-        // VIP Logic: 'this' (VIP) comes before 'other' (Non-VIP)
+        // VIP Logic: 'this' (VIP) comes before 'other' (Non-VIP).
         if (this.isVip && !other.isVip) {
             return -1;
         } else if (!this.isVip && other.isVip) {
