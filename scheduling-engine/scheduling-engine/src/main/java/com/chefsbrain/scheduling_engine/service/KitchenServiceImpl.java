@@ -1,6 +1,7 @@
 package com.chefsbrain.scheduling_engine.service;
 
 import com.chefsbrain.scheduling_engine.model.Order;
+import com.chefsbrain.scheduling_engine.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -11,18 +12,28 @@ import java.util.PriorityQueue;
 @Service
 public class KitchenServiceImpl implements KitchenService {
 
-    // The Min-Heap: Automatically keeps the most urgent order at the top
+    // The Min-Heap: RAM-based "Brain" for immediate scheduling
     private final PriorityQueue<Order> minHeap = new PriorityQueue<>();
+
+    // The Database: H2-based "Memory" for history and persistence
+    private final OrderRepository orderRepository;
+
+    // Constructor Injection (Spring automatically finds the Repository)
+    public KitchenServiceImpl(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
 
     // --- YOUR PART (Niviru) ---
 
     @Override
     public void addOrderToQueue(Order order) {
-        // The PriorityQueue uses the Order.compareTo() method we wrote
-        // to determine where this order sits in the heap.
-        // VIP orders and those with immediate start times float to the top.
-        minHeap.add(order);
-        System.out.println("Added to Heap: " + order.getDishName() + " | Priority Rank: " + order.getCalculatedStartTime());
+        // 1. Save to H2 Database (Persist it so it doesn't vanish on restart)
+        Order savedOrder = orderRepository.save(order);
+        System.out.println("💾 Order Saved to H2 DB: ID " + savedOrder.getId());
+
+        // 2. Add to Min-Heap (For the Chef's immediate "Next Task" view)
+        minHeap.add(savedOrder);
+        System.out.println("🔥 Added to Heap: " + savedOrder.getDishName() + " | Priority: " + savedOrder.getCalculatedStartTime());
     }
 
     @Override
