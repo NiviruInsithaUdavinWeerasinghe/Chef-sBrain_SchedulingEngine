@@ -20,6 +20,7 @@ public class Order implements Comparable<Order> {
 
     private int tableNumber;
     private String dishName;
+    private Long dishId; // Add this so we know WHICH dish this is (for ingredients)
 
     // Critical for "Prep Sync": The time required to cook the dish
     private int prepTimeMinutes;
