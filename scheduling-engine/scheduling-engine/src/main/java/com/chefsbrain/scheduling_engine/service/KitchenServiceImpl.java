@@ -74,4 +74,10 @@ public class KitchenServiceImpl implements KitchenService {
             System.out.println("🔄 Undid completion. Order returned to Active: " + lastOrder.getDishName());
         }
     }
+
+    @Override
+    public List<Order> getHistory() {
+        return orderHistory.getAll();
+    }
+
 }

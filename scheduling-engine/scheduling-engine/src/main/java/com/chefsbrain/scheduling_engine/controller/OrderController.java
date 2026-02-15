@@ -43,7 +43,7 @@ public class OrderController {
 
     /**
      * Endpoint: GET /api/orders/queue
-     * [cite_start]Action: Chef looks at the dashboard screen[cite: 61].
+     * Action: Chef looks at the dashboard screen.
      * Output: List of all active orders sorted by priority.
      */
     @GetMapping("/queue")
@@ -53,7 +53,7 @@ public class OrderController {
 
     /**
      * Endpoint: GET /api/orders/next
-     * [cite_start]Action: Chef asks "What do I cook NOW?"[cite: 72].
+     * Action: Chef asks "What do I cook NOW?".
      * Output: The single most urgent order (Top of the Heap).
      */
     @GetMapping("/next")
@@ -63,5 +63,37 @@ public class OrderController {
             return ResponseEntity.noContent().build(); // Return 204 if queue is empty
         }
         return ResponseEntity.ok(nextOrder);
+    }
+
+    // --- SACHIN'S NEW ENDPOINTS (DLL Integration) ---
+
+    /**
+     * Endpoint: POST /api/orders/complete
+     * Action: Chef clicks "Done" on an order. Removes from active queue, adds to history.
+     */
+    @PostMapping("/complete")
+    public ResponseEntity<String> completeOrder(@RequestBody Order order) {
+        kitchenService.completeOrder(order);
+        return ResponseEntity.ok("Order marked as complete and moved to history.");
+    }
+
+    /**
+     * Endpoint: POST /api/orders/undo
+     * Action: Chef accidentally completed an order. Pops it from history, puts back in active queue.
+     */
+    @PostMapping("/undo")
+    public ResponseEntity<String> undoLastCompletion() {
+        kitchenService.undoLastCompletion();
+        return ResponseEntity.ok("Last completion undone and moved back to active queue.");
+    }
+
+    /**
+     * Endpoint: GET /api/orders/history
+     * Action: Manager/Chef views the recently completed orders.
+     * Output: List of completed orders from the Custom DLL.
+     */
+    @GetMapping("/history")
+    public ResponseEntity<List<Order>> getHistory() {
+        return ResponseEntity.ok(kitchenService.getHistory());
     }
 }
