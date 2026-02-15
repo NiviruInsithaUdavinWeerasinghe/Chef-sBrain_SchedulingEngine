@@ -2,6 +2,9 @@ package com.chefsbrain.scheduling_engine.service.history;
 
 import com.chefsbrain.scheduling_engine.model.Order;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Custom implementation of a Doubly Linked List to manage completed orders.
  */
@@ -46,5 +49,18 @@ public class CustomOrderHistory {
 
     public boolean isEmpty() {
         return size == 0;
+    }
+
+    /**
+     * Traverses the DLL and returns all orders as a List.
+     */
+    public List<Order> getAll() {
+        List<Order> orderList = new ArrayList<>();
+        Node current = head;
+        while (current != null) {
+            orderList.add(current.order);
+            current = current.next;
+        }
+        return orderList;
     }
 }

@@ -45,4 +45,6 @@ public interface KitchenService {
      * (Assigned to: Niviru)
      */
     List<Order> getActiveQueue();
+
+    List<Order> getHistory();
 }
