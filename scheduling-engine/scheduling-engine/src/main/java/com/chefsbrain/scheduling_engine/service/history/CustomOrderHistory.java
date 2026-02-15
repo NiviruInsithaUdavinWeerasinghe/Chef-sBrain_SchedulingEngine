@@ -54,6 +54,7 @@ public class CustomOrderHistory {
     /**
      * Traverses the DLL and returns all orders as a List.
      */
+    //get all method
     public List<Order> getAll() {
         List<Order> orderList = new ArrayList<>();
         Node current = head;
