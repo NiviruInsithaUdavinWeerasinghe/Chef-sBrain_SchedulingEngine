@@ -2,82 +2,77 @@ package com.chefsbrain.scheduling_engine.service;
 
 import com.chefsbrain.scheduling_engine.model.Order;
 import com.chefsbrain.scheduling_engine.repository.OrderRepository;
-import org.springframework.stereotype.Service;
-// --- ADD THIS IMPORT ---
+import com.chefsbrain.scheduling_engine.service.KitchenService;
 import com.chefsbrain.scheduling_engine.service.history.CustomOrderHistory;
+import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class KitchenServiceImpl implements KitchenService {
 
-    private final PriorityQueue<Order> minHeap = new PriorityQueue<>();
+    private final Map<Long, PriorityQueue<Order>> workspaceHeaps = new ConcurrentHashMap<>();
     private final OrderRepository orderRepository;
-
-    // --- ADD THIS FIELD ---
-    // Initialize your custom DLL
-    private final CustomOrderHistory orderHistory = new CustomOrderHistory();
+    private final Map<Long, CustomOrderHistory> workspaceHistories = new ConcurrentHashMap<>();
 
     public KitchenServiceImpl(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
     }
 
-    // ... (addOrderToQueue, getNextUrgentTask, getActiveQueue remain same) ...
+    private PriorityQueue<Order> getHeap(Long workspaceId) {
+        return workspaceHeaps.computeIfAbsent(workspaceId, k -> new PriorityQueue<>());
+    }
+
+    private CustomOrderHistory getHistoryObj(Long workspaceId) {
+        return workspaceHistories.computeIfAbsent(workspaceId, k -> new CustomOrderHistory());
+    }
+
     @Override
     public void addOrderToQueue(Order order) {
         Order savedOrder = orderRepository.save(order);
-        minHeap.add(savedOrder);
+        getHeap(savedOrder.getWorkspaceId()).add(savedOrder);
     }
 
     @Override
-    public Order getNextUrgentTask() {
-        return minHeap.peek();
+    public Order getNextUrgentTask(Long workspaceId) {
+        return getHeap(workspaceId).peek();
     }
 
     @Override
-    public List<Order> getActiveQueue() {
-        List<Order> sortedList = new ArrayList<>(minHeap);
+    public List<Order> getActiveQueue(Long workspaceId) {
+        List<Order> sortedList = new ArrayList<>(getHeap(workspaceId));
         Collections.sort(sortedList);
         return sortedList;
     }
 
-
-    // ... (checkAllergyConflict remains same) ...
     @Override
     public boolean checkAllergyConflict(Long dishId, List<String> customerAllergies) {
         return false;
     }
 
-
-    // --- SACHIN'S PART (UPDATED) ---
-
     @Override
     public void completeOrder(Order order) {
-        // 1. Remove from Heap (Active tasks)
-        minHeap.remove(order);
-
-        // 2. Add to Custom History DLL
-        orderHistory.addLast(order);
+        getHeap(order.getWorkspaceId()).remove(order);
+        getHistoryObj(order.getWorkspaceId()).addLast(order);
         System.out.println("✅ Order moved to Custom DLL History: " + order.getDishName());
     }
 
     @Override
-    public void undoLastCompletion() {
-        // 1. Remove from History DLL
-        Order lastOrder = orderHistory.removeLast();
-
-        // 2. If an order was recalled, put it back into the Active Heap
+    public void undoLastCompletion(Long workspaceId) {
+        Order lastOrder = getHistoryObj(workspaceId).removeLast();
         if (lastOrder != null) {
-            minHeap.add(lastOrder);
+            getHeap(workspaceId).add(lastOrder);
             System.out.println("🔄 Undid completion. Order returned to Active: " + lastOrder.getDishName());
         }
     }
 
     @Override
-    public List<Order> getHistory() {
-        return orderHistory.getAll();
+    public List<Order> getHistory(Long workspaceId) {
+        return getHistoryObj(workspaceId).getAll();
     }
-
 }
