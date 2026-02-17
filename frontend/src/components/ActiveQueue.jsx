@@ -1,13 +1,25 @@
 import { useState, useEffect } from "react";
 
-export default function ActiveQueue({ onNotify }) {
+export default function ActiveQueue({ onNotify, workspaceId }) {
   const [orders, setOrders] = useState([]);
+  const [menu, setMenu] = useState([]); // Added to look up ingredients
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Fetch the sorted Min-Heap queue from the backend
+  // Fetch the menu once so we can match dish names to their ingredients
+  useEffect(() => {
+    if (!workspaceId) return;
+    fetch(`http://localhost:8080/api/dishes?workspaceId=${workspaceId}`)
+      .then((res) => res.json())
+      .then((data) => setMenu(data))
+      .catch((err) => console.error("Error fetching menu:", err));
+  }, [workspaceId]); // 1. Fetch the sorted Min-Heap queue from the backend
+
   const fetchQueue = async () => {
+    if (!workspaceId) return;
     try {
-      const response = await fetch("http://localhost:8080/api/orders/queue");
+      const response = await fetch(
+        `http://localhost:8080/api/orders/queue?workspaceId=${workspaceId}`,
+      );
       if (response.ok) {
         const data = await response.json();
         setOrders(data);
@@ -20,11 +32,10 @@ export default function ActiveQueue({ onNotify }) {
   };
 
   useEffect(() => {
-    fetchQueue();
-    // Poll the server every 5 seconds to keep the kitchen updated
+    fetchQueue(); // Poll the server every 5 seconds to keep the kitchen updated
     const interval = setInterval(fetchQueue, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [workspaceId]);
 
   // 2. Handle completing an order (Moves it to Sachin's History DLL)
   const handleComplete = async (order) => {
@@ -102,54 +113,102 @@ export default function ActiveQueue({ onNotify }) {
                     : "border-slate-800/80"
                 } rounded-lg p-3 transition-all duration-300 hover:border-slate-700 hover:bg-slate-900/80 hover:translate-x-1`}
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    {/* Integrated minimalist VIP tag */}
-                    <h3 className="text-sm font-bold text-white group-hover:text-orange-400 transition-colors flex items-center gap-2">
-                      {order.dishName}
-                      {order.isVip && (
-                        <span className="bg-amber-500/10 text-amber-500 border border-amber-500/30 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider">
-                          VIP
-                        </span>
+                {(() => {
+                  const dish = menu.find((d) => d.name === order.dishName);
+                  return (
+                    <div className="flex justify-between items-center gap-3">
+                      {dish?.imageUrl && (
+                        <img
+                          src={dish.imageUrl}
+                          alt={order.dishName}
+                          className="w-14 h-14 rounded-lg object-cover border border-slate-700 shrink-0"
+                        />
                       )}
-                    </h3>
+                      <div className="flex-1 min-w-0">
+                        {/* Integrated minimalist VIP tag */}
+                        <h3 className="text-sm font-bold text-white group-hover:text-orange-400 transition-colors flex items-center gap-2 truncate">
+                          {order.quantity}x {order.dishName}
+                          {order.isVip && (
+                            <span className="bg-amber-500/10 text-amber-500 border border-amber-500/30 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
+                              VIP
+                            </span>
+                          )}
+                        </h3>
 
-                    <div className="flex gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest">
-                      <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
-                        Table{" "}
-                        <span className="text-slate-100">
-                          {order.tableNumber}
-                        </span>
-                      </span>
-                      <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
-                        Prep{" "}
-                        <span className="text-slate-100">
-                          {order.prepTimeMinutes}m
-                        </span>
-                      </span>
+                        {/* Ingredients List */}
+                        {(() => {
+                          const targetIngredients =
+                            order.ingredients ||
+                            (dish ? dish.ingredients : null);
+                          if (!targetIngredients) return null;
+
+                          const ingArray = Array.isArray(targetIngredients)
+                            ? targetIngredients
+                            : targetIngredients
+                                .split(",")
+                                .map((i) => i.trim())
+                                .filter((i) => i !== "");
+
+                          if (ingArray.length === 0) return null;
+
+                          return (
+                            <div className="flex flex-wrap gap-1.5 mt-1.5 pr-4">
+                              {ingArray.map((ing, idx) => (
+                                <span
+                                  key={idx}
+                                  className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md text-[9px] font-medium border border-slate-700 uppercase tracking-wider"
+                                >
+                                  {ing}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        })()}
+
+                        <div className="flex gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest flex-wrap">
+                          <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
+                            Qty{" "}
+                            <span className="text-slate-100">
+                              {order.quantity}
+                            </span>
+                          </span>
+                          <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
+                            Table{" "}
+                            <span className="text-slate-100">
+                              {order.tableNumber}
+                            </span>
+                          </span>
+                          <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
+                            Prep{" "}
+                            <span className="text-slate-100">
+                              {order.prepTimeMinutes}m
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleComplete(order)}
+                        className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-slate-950 p-2 rounded-lg transition-all duration-300 active:scale-90 border border-emerald-500/20 hover:border-emerald-400 shadow-sm group/btn shrink-0 ml-1"
+                        title="Mark as Done"
+                      >
+                        <svg
+                          className="w-4 h-4 transition-transform group-hover/btn:scale-110"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="3"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      </button>
                     </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleComplete(order)}
-                    className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-slate-950 p-2 rounded-lg transition-all duration-300 active:scale-90 border border-emerald-500/20 hover:border-emerald-400 shadow-sm group/btn shrink-0 ml-3"
-                    title="Mark as Done"
-                  >
-                    <svg
-                      className="w-4 h-4 transition-transform group-hover/btn:scale-110"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="3"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </button>
-                </div>
+                  );
+                })()}
               </div>
             ))
           )}

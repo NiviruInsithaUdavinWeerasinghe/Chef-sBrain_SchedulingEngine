@@ -28,6 +28,7 @@ public class Dish {
     @ElementCollection // This tells JPA to store this list in a separate sub-table
     private List<String> ingredients;
 
+    private Long workspaceId;
     // Optional: Useful for the Frontend UI later
     // private String category; // e.g., "Main", "Dessert"
     // private double price;

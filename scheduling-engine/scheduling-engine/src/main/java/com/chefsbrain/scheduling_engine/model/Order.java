@@ -26,12 +26,15 @@ public class Order implements Comparable<Order> {
 
     private int prepTimeMinutes;
 
+    private int quantity;
     // FIX: This tells Jackson "The JSON key is exactly 'isVip'"
     @JsonProperty("isVip")
     private boolean isVip;
 
     private LocalDateTime orderPlacedTime;
     private LocalDateTime calculatedStartTime;
+
+    private Long workspaceId;
 
     @Override
     public int compareTo(Order other) {

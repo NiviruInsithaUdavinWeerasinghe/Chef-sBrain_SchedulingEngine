@@ -52,10 +52,10 @@ public class OrderController {
     }
 
     /**
-     * Endpoint: GET /api/orders/next
-     * Action: Chef asks "What do I cook NOW?".
-     * Output: The single most urgent order (Top of the Heap).
-     */
+    * Endpoint: GET /api/orders/next
+    * Action: Chef asks "What do I cook NOW?".
+    * Output: The single most urgent order (Top of the Heap).
+    */
     @GetMapping("/next")
     public ResponseEntity<Order> getNextUrgentTask(@org.springframework.web.bind.annotation.RequestParam Long workspaceId) {
         Order nextOrder = kitchenService.getNextUrgentTask(workspaceId);
@@ -68,9 +68,9 @@ public class OrderController {
     // --- SACHIN'S NEW ENDPOINTS (DLL Integration) ---
 
     /**
-     * Endpoint: POST /api/orders/complete
-     * Action: Chef clicks "Done" on an order. Removes from active queue, adds to history.
-     */
+    * Endpoint: POST /api/orders/complete
+    * Action: Chef clicks "Done" on an order. Removes from active queue, adds to history.
+    */
 
     @PostMapping("/complete")
     public ResponseEntity<String> completeOrder(@RequestBody Order order) {
@@ -79,9 +79,9 @@ public class OrderController {
     }
 
     /**
-     * Endpoint: POST /api/orders/undo
-     * Action: Chef accidentally completed an order. Pops it from history, puts back in active queue.
-     */
+    * Endpoint: POST /api/orders/undo
+    * Action: Chef accidentally completed an order. Pops it from history, puts back in active queue.
+    */
     @PostMapping("/undo")
     public ResponseEntity<String> undoLastCompletion(@org.springframework.web.bind.annotation.RequestParam Long workspaceId) {
         kitchenService.undoLastCompletion(workspaceId);
@@ -89,10 +89,10 @@ public class OrderController {
     }
 
     /**
-     * Endpoint: GET /api/orders/history
-     * Action: Manager/Chef views the recently completed orders.
-     * Output: List of completed orders from the Custom DLL.
-     */
+    * Endpoint: GET /api/orders/history
+    * Action: Manager/Chef views the recently completed orders.
+    * Output: List of completed orders from the Custom DLL.
+    */
     @GetMapping("/history")
     public ResponseEntity<List<Order>> getHistory(@org.springframework.web.bind.annotation.RequestParam Long workspaceId) {
         return ResponseEntity.ok(kitchenService.getHistory(workspaceId));
