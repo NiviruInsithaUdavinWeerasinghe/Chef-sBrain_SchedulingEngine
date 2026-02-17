@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders") // This is the base URL for all endpoints below
-@CrossOrigin(origins = "http://localhost:5173") // Allows your React Frontend to talk to this Backend
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5175"}) // Allows your React Frontend to talk to this Backend
 public class OrderController {
 
     private final KitchenService kitchenService;
