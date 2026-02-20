@@ -1,10 +1,12 @@
 package com.chefsbrain.scheduling_engine.controller;
 
+import com.chefsbrain.scheduling_engine.dto.AllergyAlertDTO;  // NEW IMPORT
 import com.chefsbrain.scheduling_engine.model.Dish;
 import com.chefsbrain.scheduling_engine.repository.DishRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;  // NEW IMPORT for HashMap
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +26,7 @@ public class DishController {
      * Action: Frontend asks for the menu to populate the dropdown.
      */
     @GetMapping
-    public ResponseEntity<List<Dish>> getAllDishes(@org.springframework.web.bind.annotation.RequestParam Long workspaceId) {
+    public ResponseEntity<List<Dish>> getAllDishes(@RequestParam Long workspaceId) {
         return ResponseEntity.ok(dishRepository.findByWorkspaceId(workspaceId));
     }
 
@@ -79,5 +81,80 @@ public class DishController {
         List<Dish> dishes = dishRepository.findByWorkspaceId(workspaceId);
         dishRepository.deleteAll(dishes);
         return ResponseEntity.ok(Map.of("message", "Menu unloaded successfully!"));
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // NEW ENDPOINT – Allergy reporting with HASHMAP (Option B)
+    // ────────────────────────────────────────────────────────────────
+    @PostMapping("/allergies")
+    public ResponseEntity<String> reportCustomerAllergies(
+            @RequestBody AllergyAlertDTO alert,
+            @RequestParam Long workspaceId) {
+
+        // Basic validation
+        if (!workspaceId.equals(alert.getWorkspaceId())) {
+            return ResponseEntity.badRequest().body("Workspace ID mismatch");
+        }
+
+        if (alert.getDishId() == null) {
+            return ResponseEntity.badRequest().body("dishId is required");
+        }
+
+        // Fetch the real dish from database
+        Dish dish = dishRepository.findById(alert.getDishId())
+                .orElseThrow(() -> new RuntimeException("Dish not found with ID: " + alert.getDishId()));
+
+        // ────────────────────────────────────────────────
+        // PROJECT REQUIREMENT: HASHMAP ALGORITHM IMPLEMENTATION
+        // Using HashMap<String, String> for O(1) average-case lookup
+        // of whether each ingredient is allergic for this customer
+        // ────────────────────────────────────────────────
+        HashMap<String, String> allergyStatusMap = new HashMap<>();
+
+        // Populate map – normalize keys to lowercase for case-insensitive matching
+        for (String allergicIng : alert.getCustomerAllergies()) {
+            if (allergicIng != null && !allergicIng.trim().isEmpty()) {
+                allergyStatusMap.put(allergicIng.trim().toLowerCase(), "ALLERGIC");
+            }
+        }
+
+        // Build kitchen alert message
+        StringBuilder kitchenAlert = new StringBuilder();
+        kitchenAlert.append("=== KITCHEN ALLERGY ALERT ===\n");
+        kitchenAlert.append("Dish: ").append(dish.getName())
+                .append(" (ID: ").append(dish.getId()).append(")\n");
+        kitchenAlert.append("Customer selected allergies:\n");
+
+        boolean foundAnyAllergy = false;
+
+        // Check every ingredient using HashMap lookup (O(1) average time)
+        for (String ingredient : dish.getIngredients()) {
+            String status = allergyStatusMap.getOrDefault(
+                    ingredient.trim().toLowerCase(),
+                    "SAFE"
+            );
+
+            if ("ALLERGIC".equals(status)) {
+                kitchenAlert.append("  ⚠ AVOID: ").append(ingredient).append("\n");
+                foundAnyAllergy = true;
+            }
+        }
+
+        if (!foundAnyAllergy) {
+            kitchenAlert.append("  No matching allergens found in dish ingredients.\n");
+        }
+
+        kitchenAlert.append("==============================");
+
+        // ── In real app: send via WebSocket / queue / save to DB ──
+        // For development / demo → print to console
+        System.out.println(kitchenAlert.toString());
+
+        // Response for frontend
+        String userMessage = foundAnyAllergy
+                ? "Allergy alert sent to kitchen – your safety is our priority!"
+                : "No allergy conflict detected for this dish.";
+
+        return ResponseEntity.ok(userMessage);
     }
 }
