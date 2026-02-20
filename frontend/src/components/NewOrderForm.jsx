@@ -13,11 +13,8 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
   const [isVip, setIsVip] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // ── NEW ── Allergy feature states
+  // Allergy selection state (kept — user can still mark allergies)
   const [selectedAllergies, setSelectedAllergies] = useState([]);
-  const [allergyMessage, setAllergyMessage] = useState(null);
-  const [allergyError, setAllergyError] = useState(null);
-  const [sendingAllergy, setSendingAllergy] = useState(false);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -29,9 +26,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
 
   const handleDishSelect = (dishName) => {
     setSelectedDish(dishName);
-    setSelectedAllergies([]);           // reset allergies when dish changes
-    setAllergyMessage(null);
-    setAllergyError(null);
+    setSelectedAllergies([]); // reset allergies when dish changes
 
     const foundDish = menu.find((dish) => dish.name === dishName);
     if (foundDish) {
@@ -57,7 +52,6 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
     setIsDropdownOpen(false);
   };
 
-  // ── NEW ── Toggle allergy checkbox
   const toggleAllergy = (ingredient) => {
     setSelectedAllergies((prev) =>
       prev.includes(ingredient)
@@ -66,113 +60,59 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
     );
   };
 
-  // ── NEW ── Send allergy info to kitchen
-  const handleNotifyAllergies = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
     if (!selectedDish) {
-      setAllergyError("Please select a dish first.");
+      onNotify("Please select a dish from the menu first.", "error");
       return;
     }
 
-    if (selectedAllergies.length === 0) {
-      setAllergyError("No allergies selected.");
-      return;
-    }
-
-    setSendingAllergy(true);
-    setAllergyError(null);
-    setAllergyMessage(null);
-
-    const foundDish = menu.find((d) => d.name === selectedDish);
-
-    const payload = {
-      dishId: foundDish?.id,
+    const newOrder = {
       dishName: selectedDish,
-      workspaceId: Number(workspaceId),
+      quantity: parseInt(quantity),
+      tableNumber: parseInt(tableNumber),
+      prepTimeMinutes: prepTime,
+      isVip: isVip,
+      workspaceId: parseInt(workspaceId),
+      // Allergies are sent as part of the order payload
       customerAllergies: selectedAllergies,
     };
 
     try {
-      const res = await fetch(
-        `http://localhost:8080/api/dishes/allergies?workspaceId=${workspaceId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch("http://localhost:8080/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newOrder),
+      });
 
-      if (res.ok) {
-        const message = await res.text();
-        setAllergyMessage(message);
-        onNotify("Allergy alert sent to kitchen", "success");
+      if (response.ok) {
+        onNotify(
+          `Order fired to kitchen: ${quantity}x ${selectedDish}${
+            selectedAllergies.length > 0 
+              ? ` (Allergies: ${selectedAllergies.join(", ")})` 
+              : ""
+          }`,
+          "success"
+        );
+
+        // Reset form
+        setSelectedDish("");
+        setDishImage("");
+        setIngredients([]);
+        setQuantity(1);
+        setTableNumber("");
+        setPrepTime(0);
+        setIsVip(false);
+        setSelectedAllergies([]);
       } else {
-        const errText = await res.text();
-        throw new Error(errText || "Failed to send allergy info");
+        onNotify("Failed to send order to kitchen.", "error");
       }
-    } catch (err) {
-      console.error("Allergy notification error:", err);
-      setAllergyError(err.message || "Could not notify kitchen");
-      onNotify("Failed to send allergy alert", "error");
-    } finally {
-      setSendingAllergy(false);
+    } catch (error) {
+      console.error("Error placing order:", error);
+      onNotify("Network error occurred.", "error");
     }
   };
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (!selectedDish) {
-    onNotify("Please select a dish from the menu first.", "error");
-    return;
-  }
-
-  const newOrder = {
-    dishName: selectedDish,
-    quantity: parseInt(quantity),
-    tableNumber: parseInt(tableNumber),
-    prepTimeMinutes: prepTime,
-    isVip: isVip,
-    workspaceId: parseInt(workspaceId),
-    // ── NEW ── Include allergies in the order payload
-    customerAllergies: selectedAllergies.length > 0 ? selectedAllergies : null,
-  };
-
-  try {
-    const response = await fetch("http://localhost:8080/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newOrder),
-    });
-
-    if (response.ok) {
-      onNotify(
-        `Order fired to kitchen: ${quantity}x ${selectedDish}${
-          selectedAllergies.length > 0 
-            ? ` (Allergies: ${selectedAllergies.join(", ")})` 
-            : ""
-        }`,
-        "success"
-      );
-
-      // Reset everything including allergies
-      setSelectedDish("");
-      setDishImage("");
-      setIngredients([]);
-      setQuantity(1);
-      setTableNumber("");
-      setPrepTime(0);
-      setIsVip(false);
-      setSelectedAllergies([]);
-      setAllergyMessage(null);
-      setAllergyError(null);
-    } else {
-      onNotify("Failed to send order to kitchen.", "error");
-    }
-  } catch (error) {
-    console.error("Error placing order:", error);
-    onNotify("Network error occurred.", "error");
-  }
-};
 
   return (
     <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-4 w-full h-full relative overflow-y-auto custom-scrollbar transition-all duration-300 hover:shadow-orange-500/5 hover:border-slate-700 group">
@@ -265,7 +205,7 @@ const handleSubmit = async (e) => {
           )}
         </div>
 
-        {/* ── NEW ── Allergy selection block ── */}
+        {/* Allergy selection block (kept — now part of normal order flow) */}
         {ingredients.length > 0 && (
           <div className="flex flex-col gap-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
             <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
@@ -292,28 +232,6 @@ const handleSubmit = async (e) => {
                 </label>
               ))}
             </div>
-
-            <button
-              type="button"
-              onClick={handleNotifyAllergies}
-              disabled={sendingAllergy || selectedAllergies.length === 0}
-              className={`mt-2 text-xs font-bold py-1.5 px-4 rounded-lg transition-all ${
-                selectedAllergies.length > 0 && !sendingAllergy
-                  ? "bg-red-600 hover:bg-red-700 text-white shadow-red-500/30"
-                  : "bg-slate-700 text-slate-400 cursor-not-allowed"
-              }`}
-            >
-              {sendingAllergy
-                ? "Sending..."
-                : "Notify Kitchen About Allergies"}
-            </button>
-
-            {allergyMessage && (
-              <p className="text-green-400 text-[10px] mt-1">{allergyMessage}</p>
-            )}
-            {allergyError && (
-              <p className="text-red-400 text-[10px] mt-1">{allergyError}</p>
-            )}
           </div>
         )}
 
