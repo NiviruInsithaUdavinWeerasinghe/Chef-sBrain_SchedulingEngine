@@ -2,27 +2,29 @@ import { useState, useEffect } from "react";
 
 export default function ActiveQueue({ onNotify, workspaceId }) {
   const [orders, setOrders] = useState([]);
-  const [menu, setMenu] = useState([]); // Added to look up ingredients
+  const [menu, setMenu] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch the menu once so we can match dish names to their ingredients
+  // Fetch menu (to get dish images & fallback ingredients)
   useEffect(() => {
     if (!workspaceId) return;
     fetch(`http://localhost:8080/api/dishes?workspaceId=${workspaceId}`)
       .then((res) => res.json())
       .then((data) => setMenu(data))
       .catch((err) => console.error("Error fetching menu:", err));
-  }, [workspaceId]); // 1. Fetch the sorted Min-Heap queue from the backend
+  }, [workspaceId]);
 
   const fetchQueue = async () => {
     if (!workspaceId) return;
     try {
       const response = await fetch(
-        `http://localhost:8080/api/orders/queue?workspaceId=${workspaceId}`,
+        `http://localhost:8080/api/orders/queue?workspaceId=${workspaceId}`
       );
       if (response.ok) {
         const data = await response.json();
         setOrders(data);
+      } else {
+        console.warn("Queue fetch failed:", response.status);
       }
     } catch (error) {
       console.error("Error fetching queue:", error);
@@ -32,26 +34,22 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
   };
 
   useEffect(() => {
-    fetchQueue(); // Poll the server every 5 seconds to keep the kitchen updated
+    fetchQueue();
     const interval = setInterval(fetchQueue, 5000);
     return () => clearInterval(interval);
   }, [workspaceId]);
 
-  // 2. Handle completing an order (Moves it to Sachin's History DLL)
   const handleComplete = async (order) => {
     try {
-      const response = await fetch(
-        "http://localhost:8080/api/orders/complete",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(order),
-        },
-      );
+      const response = await fetch("http://localhost:8080/api/orders/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(order),
+      });
 
       if (response.ok) {
         onNotify(`Order Completed: ${order.dishName}`, "success");
-        fetchQueue(); // Refresh the list immediately
+        fetchQueue(); // Refresh immediately
       } else {
         onNotify("Failed to complete order.", "error");
       }
@@ -71,7 +69,7 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Distinct Header Section */}
+      {/* Header */}
       <div className="flex justify-between items-end mb-3 px-1 shrink-0">
         <div>
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -92,9 +90,8 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
         </div>
       </div>
 
-      {/* Distinct Card Container Section */}
+      {/* Queue Cards */}
       <div className="flex-1 bg-slate-950/60 border border-slate-800/60 rounded-xl p-3 overflow-y-auto custom-scrollbar pr-2 shadow-inner relative">
-        {/* Fixed Glowing Top Accent Line */}
         <div className="sticky top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-50 z-20 mb-3"></div>
 
         <div className="space-y-2.5">
@@ -104,113 +101,136 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
               <p className="text-xs">New orders will appear here.</p>
             </div>
           ) : (
-            orders.map((order, index) => (
-              <div
-                key={order.id || index}
-                className={`group relative bg-slate-900/40 backdrop-blur-md border ${
-                  order.isVip
-                    ? "border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.08)]"
-                    : "border-slate-800/80"
-                } rounded-lg p-3 transition-all duration-300 hover:border-slate-700 hover:bg-slate-900/80 hover:translate-x-1`}
-              >
-                {(() => {
-                  const dish = menu.find((d) => d.name === order.dishName);
-                  return (
-                    <div className="flex justify-between items-center gap-3">
-                      {dish?.imageUrl && (
-                        <img
-                          src={dish.imageUrl}
-                          alt={order.dishName}
-                          className="w-14 h-14 rounded-lg object-cover border border-slate-700 shrink-0"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        {/* Integrated minimalist VIP tag */}
-                        <h3 className="text-sm font-bold text-white group-hover:text-orange-400 transition-colors flex items-center gap-2 truncate">
-                          {order.quantity}x {order.dishName}
-                          {order.isVip && (
-                            <span className="bg-amber-500/10 text-amber-500 border border-amber-500/30 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
-                              VIP
-                            </span>
-                          )}
-                        </h3>
+            orders.map((order, index) => {
+              const dish = menu.find((d) => d.name === order.dishName);
+              const hasAllergies = Array.isArray(order.customerAllergies) && order.customerAllergies.length > 0;
 
-                        {/* Ingredients List */}
-                        {(() => {
-                          const targetIngredients =
-                            order.ingredients ||
-                            (dish ? dish.ingredients : null);
-                          if (!targetIngredients) return null;
+              return (
+                <div
+                  key={order.id || index}
+                  className={`group relative bg-slate-900/40 backdrop-blur-md border rounded-lg p-3 transition-all duration-300 hover:bg-slate-900/80 hover:translate-x-1 ${
+                    hasAllergies
+                      ? "border-red-600/70 shadow-[0_0_18px_rgba(220,38,38,0.4)]"
+                      : order.isVip
+                      ? "border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.08)]"
+                      : "border-slate-800/80"
+                  }`}
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    {dish?.imageUrl && (
+                      <img
+                        src={dish.imageUrl}
+                        alt={order.dishName}
+                        className="w-14 h-14 rounded-lg object-cover border border-slate-700 shrink-0"
+                      />
+                    )}
 
-                          const ingArray = Array.isArray(targetIngredients)
-                            ? targetIngredients
-                            : targetIngredients
-                                .split(",")
-                                .map((i) => i.trim())
-                                .filter((i) => i !== "");
-
-                          if (ingArray.length === 0) return null;
-
-                          return (
-                            <div className="flex flex-wrap gap-1.5 mt-1.5 pr-4">
-                              {ingArray.map((ing, idx) => (
-                                <span
-                                  key={idx}
-                                  className="bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md text-[9px] font-medium border border-slate-700 uppercase tracking-wider"
-                                >
-                                  {ing}
-                                </span>
-                              ))}
-                            </div>
-                          );
-                        })()}
-
-                        <div className="flex gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest flex-wrap">
-                          <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
-                            Qty{" "}
-                            <span className="text-slate-100">
-                              {order.quantity}
-                            </span>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-white group-hover:text-orange-400 transition-colors flex items-center gap-2 truncate">
+                        {order.quantity}x {order.dishName}
+                        {order.isVip && (
+                          <span className="bg-amber-500/10 text-amber-500 border border-amber-500/30 text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0">
+                            VIP
                           </span>
-                          <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
-                            Table{" "}
-                            <span className="text-slate-100">
-                              {order.tableNumber}
-                            </span>
-                          </span>
-                          <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
-                            Prep{" "}
-                            <span className="text-slate-100">
-                              {order.prepTimeMinutes}m
-                            </span>
-                          </span>
+                        )}
+                      </h3>
+
+                      {/* Allergy Warning - shown only when there are allergies */}
+                      {hasAllergies && (
+                        <div className="mt-3 p-3 bg-red-950/65 border border-red-700/60 rounded-lg">
+                          <div className="flex items-center gap-2 text-red-300 text-xs font-bold uppercase tracking-wider mb-2 animate-pulse">
+                            <span className="text-lg">⚠</span>
+                            CRITICAL ALLERGY WARNING
+                          </div>
+                          <p className="text-red-200 text-[10px] mb-2">
+                            **Do NOT use** these ingredients:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {order.customerAllergies.map((ing) => (
+                              <span
+                                key={ing}
+                                className="bg-red-900/80 text-red-100 px-2.5 py-1 rounded text-[10px] font-medium border border-red-600/70"
+                              >
+                                {ing}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-red-400/90 text-[9px] mt-2 italic">
+                            Use separate prep area • Separate utensils • High risk
+                          </p>
                         </div>
-                      </div>
+                      )}
 
-                      <button
-                        onClick={() => handleComplete(order)}
-                        className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-slate-950 p-2 rounded-lg transition-all duration-300 active:scale-90 border border-emerald-500/20 hover:border-emerald-400 shadow-sm group/btn shrink-0 ml-1"
-                        title="Mark as Done"
-                      >
-                        <svg
-                          className="w-4 h-4 transition-transform group-hover/btn:scale-110"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="3"
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </button>
+                      {/* Ingredients list */}
+                      {(() => {
+                        const targetIngredients =
+                          order.ingredients || (dish ? dish.ingredients : null);
+                        if (!targetIngredients) return null;
+
+                        const ingArray = Array.isArray(targetIngredients)
+                          ? targetIngredients
+                          : targetIngredients
+                              .split(",")
+                              .map((i) => i.trim())
+                              .filter((i) => i !== "");
+
+                        if (ingArray.length === 0) return null;
+
+                        return (
+                          <div className="flex flex-wrap gap-1.5 mt-2 pr-4">
+                            {ingArray.map((ing, idx) => (
+                              <span
+                                key={idx}
+                                className={`px-2 py-0.5 rounded-md text-[9px] font-medium border uppercase tracking-wider ${
+                                  hasAllergies && order.customerAllergies.includes(ing)
+                                    ? "bg-red-900/50 text-red-300 border-red-700 line-through opacity-75"
+                                    : "bg-slate-800 text-slate-300 border-slate-700"
+                                }`}
+                              >
+                                {ing}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Order details */}
+                      <div className="flex gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest flex-wrap">
+                        <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
+                          Qty <span className="text-slate-100">{order.quantity}</span>
+                        </span>
+                        <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
+                          Table <span className="text-slate-100">{order.tableNumber}</span>
+                        </span>
+                        <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
+                          Prep <span className="text-slate-100">{order.prepTimeMinutes}m</span>
+                        </span>
+                      </div>
                     </div>
-                  );
-                })()}
-              </div>
-            ))
+
+                    <button
+                      onClick={() => handleComplete(order)}
+                      className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-slate-950 p-2 rounded-lg transition-all duration-300 active:scale-90 border border-emerald-500/20 hover:border-emerald-400 shadow-sm group/btn shrink-0 ml-1"
+                      title="Mark as Done"
+                    >
+                      <svg
+                        className="w-4 h-4 transition-transform group-hover/btn:scale-110"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="3"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

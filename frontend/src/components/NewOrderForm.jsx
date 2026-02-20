@@ -5,13 +5,19 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
 
   // Form State
   const [selectedDish, setSelectedDish] = useState("");
-  const [dishImage, setDishImage] = useState(""); // Added for image
-  const [ingredients, setIngredients] = useState([]); // Changed to array for tags
+  const [dishImage, setDishImage] = useState("");
+  const [ingredients, setIngredients] = useState([]); // array of strings
   const [quantity, setQuantity] = useState(1);
   const [tableNumber, setTableNumber] = useState("");
   const [prepTime, setPrepTime] = useState(0);
   const [isVip, setIsVip] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Controls the custom menu
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // ── NEW ── Allergy feature states
+  const [selectedAllergies, setSelectedAllergies] = useState([]);
+  const [allergyMessage, setAllergyMessage] = useState(null);
+  const [allergyError, setAllergyError] = useState(null);
+  const [sendingAllergy, setSendingAllergy] = useState(false);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -21,15 +27,16 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
       .catch((err) => console.error("Error fetching menu:", err));
   }, [workspaceId]);
 
-  // Custom handler for our new beautiful dropdown
   const handleDishSelect = (dishName) => {
     setSelectedDish(dishName);
+    setSelectedAllergies([]);           // reset allergies when dish changes
+    setAllergyMessage(null);
+    setAllergyError(null);
 
     const foundDish = menu.find((dish) => dish.name === dishName);
     if (foundDish) {
       setPrepTime(foundDish.prepTimeMinutes);
 
-      // Convert to array for tags
       let ingArray = [];
       if (Array.isArray(foundDish.ingredients)) {
         ingArray = foundDish.ingredients;
@@ -47,60 +54,128 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
       setDishImage("");
     }
 
-    setIsDropdownOpen(false); // Close menu after picking
+    setIsDropdownOpen(false);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // ── NEW ── Toggle allergy checkbox
+  const toggleAllergy = (ingredient) => {
+    setSelectedAllergies((prev) =>
+      prev.includes(ingredient)
+        ? prev.filter((i) => i !== ingredient)
+        : [...prev, ingredient]
+    );
+  };
 
-    // Ensure a dish was picked from our custom menu
+  // ── NEW ── Send allergy info to kitchen
+  const handleNotifyAllergies = async () => {
     if (!selectedDish) {
-      onNotify("Please select a dish from the menu first.", "error");
+      setAllergyError("Please select a dish first.");
       return;
     }
 
-    const newOrder = {
+    if (selectedAllergies.length === 0) {
+      setAllergyError("No allergies selected.");
+      return;
+    }
+
+    setSendingAllergy(true);
+    setAllergyError(null);
+    setAllergyMessage(null);
+
+    const foundDish = menu.find((d) => d.name === selectedDish);
+
+    const payload = {
+      dishId: foundDish?.id,
       dishName: selectedDish,
-      quantity: parseInt(quantity),
-      tableNumber: parseInt(tableNumber),
-      prepTimeMinutes: prepTime,
-      isVip: isVip,
-      workspaceId: parseInt(workspaceId),
+      workspaceId: Number(workspaceId),
+      customerAllergies: selectedAllergies,
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newOrder),
-      });
+      const res = await fetch(
+        `http://localhost:8080/api/dishes/allergies?workspaceId=${workspaceId}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
-      if (response.ok) {
-        onNotify(
-          `Order fired to kitchen: ${quantity}x ${selectedDish}`,
-          "success",
-        );
-
-        // Reset form
-        setSelectedDish("");
-        setDishImage("");
-        setIngredients([]);
-        setQuantity(1);
-        setTableNumber("");
-        setPrepTime(0);
-        setIsVip(false);
+      if (res.ok) {
+        const message = await res.text();
+        setAllergyMessage(message);
+        onNotify("Allergy alert sent to kitchen", "success");
       } else {
-        onNotify("Failed to send order to kitchen.", "error");
+        const errText = await res.text();
+        throw new Error(errText || "Failed to send allergy info");
       }
-    } catch (error) {
-      console.error("Error placing order:", error);
-      onNotify("Network error occurred.", "error");
+    } catch (err) {
+      console.error("Allergy notification error:", err);
+      setAllergyError(err.message || "Could not notify kitchen");
+      onNotify("Failed to send allergy alert", "error");
+    } finally {
+      setSendingAllergy(false);
     }
   };
 
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!selectedDish) {
+    onNotify("Please select a dish from the menu first.", "error");
+    return;
+  }
+
+  const newOrder = {
+    dishName: selectedDish,
+    quantity: parseInt(quantity),
+    tableNumber: parseInt(tableNumber),
+    prepTimeMinutes: prepTime,
+    isVip: isVip,
+    workspaceId: parseInt(workspaceId),
+    // ── NEW ── Include allergies in the order payload
+    customerAllergies: selectedAllergies.length > 0 ? selectedAllergies : null,
+  };
+
+  try {
+    const response = await fetch("http://localhost:8080/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newOrder),
+    });
+
+    if (response.ok) {
+      onNotify(
+        `Order fired to kitchen: ${quantity}x ${selectedDish}${
+          selectedAllergies.length > 0 
+            ? ` (Allergies: ${selectedAllergies.join(", ")})` 
+            : ""
+        }`,
+        "success"
+      );
+
+      // Reset everything including allergies
+      setSelectedDish("");
+      setDishImage("");
+      setIngredients([]);
+      setQuantity(1);
+      setTableNumber("");
+      setPrepTime(0);
+      setIsVip(false);
+      setSelectedAllergies([]);
+      setAllergyMessage(null);
+      setAllergyError(null);
+    } else {
+      onNotify("Failed to send order to kitchen.", "error");
+    }
+  } catch (error) {
+    console.error("Error placing order:", error);
+    onNotify("Network error occurred.", "error");
+  }
+};
+
   return (
     <div className="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 p-4 w-full h-full relative overflow-y-auto custom-scrollbar transition-all duration-300 hover:shadow-orange-500/5 hover:border-slate-700 group">
-      {/* Decorative top accent */}
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 to-orange-600 opacity-75"></div>
 
       <div className="flex items-center gap-2 mb-3 border-b border-slate-800 pb-2 mt-1">
@@ -113,13 +188,12 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-2.5">
-        {/* Custom Curved Dish Selection Menu */}
+        {/* Dish selection */}
         <div className="flex flex-col gap-1 relative group/input">
           <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest transition-colors group-focus-within/input:text-orange-400">
             Dish Name
           </label>
 
-          {/* Large Dish Image Preview above Dropdown */}
           {dishImage && (
             <div className="w-full h-28 mt-1 rounded-xl overflow-hidden border border-slate-700 shadow-inner">
               <img
@@ -130,7 +204,6 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
             </div>
           )}
 
-          {/* Select Box Button */}
           <div
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className={`p-2 bg-slate-950 border ${
@@ -147,13 +220,14 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
               {selectedDish || "Select a dish..."}
             </span>
             <span
-              className={`text-[10px] text-slate-500 transition-transform duration-300 ${isDropdownOpen ? "rotate-180 text-orange-500" : ""}`}
+              className={`text-[10px] text-slate-500 transition-transform duration-300 ${
+                isDropdownOpen ? "rotate-180 text-orange-500" : ""
+              }`}
             >
               ▼
             </span>
           </div>
 
-          {/* Floating Curved Dropdown List */}
           {isDropdownOpen && (
             <div className="absolute z-50 top-full left-0 w-full bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] py-1.5 mt-1">
               <div className="max-h-40 overflow-y-auto px-1.5 custom-scrollbar pr-1">
@@ -173,9 +247,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
                       }`}
                     >
                       {selectedDish === dish.name && (
-                        <span className="text-orange-500 text-xs shrink-0">
-                          ✓
-                        </span>
+                        <span className="text-orange-500 text-xs shrink-0">✓</span>
                       )}
                       {dish.imageUrl && (
                         <img
@@ -192,6 +264,58 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
             </div>
           )}
         </div>
+
+        {/* ── NEW ── Allergy selection block ── */}
+        {ingredients.length > 0 && (
+          <div className="flex flex-col gap-1.5 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+            <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+              Allergies / Restrictions
+            </label>
+
+            <div className="flex flex-wrap gap-2">
+              {ingredients.map((ing) => (
+                <label
+                  key={ing}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs cursor-pointer transition-all ${
+                    selectedAllergies.includes(ing)
+                      ? "bg-red-900/40 border-red-600/60 text-red-300"
+                      : "bg-slate-800/60 border-slate-700 hover:bg-slate-700 text-slate-300"
+                  } border`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAllergies.includes(ing)}
+                    onChange={() => toggleAllergy(ing)}
+                    className="w-3.5 h-3.5 accent-red-500"
+                  />
+                  {ing}
+                </label>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleNotifyAllergies}
+              disabled={sendingAllergy || selectedAllergies.length === 0}
+              className={`mt-2 text-xs font-bold py-1.5 px-4 rounded-lg transition-all ${
+                selectedAllergies.length > 0 && !sendingAllergy
+                  ? "bg-red-600 hover:bg-red-700 text-white shadow-red-500/30"
+                  : "bg-slate-700 text-slate-400 cursor-not-allowed"
+              }`}
+            >
+              {sendingAllergy
+                ? "Sending..."
+                : "Notify Kitchen About Allergies"}
+            </button>
+
+            {allergyMessage && (
+              <p className="text-green-400 text-[10px] mt-1">{allergyMessage}</p>
+            )}
+            {allergyError && (
+              <p className="text-red-400 text-[10px] mt-1">{allergyError}</p>
+            )}
+          </div>
+        )}
 
         {/* Quantity */}
         <div className="flex flex-col gap-1 group/input">
@@ -225,7 +349,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
           />
         </div>
 
-        {/* Prep Time (Read-Only) */}
+        {/* Prep Time */}
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
             Prep Time (Mins)
@@ -238,7 +362,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
           />
         </div>
 
-        {/* Ingredients (Read-Only Tags) */}
+        {/* Ingredients Tags */}
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
             Ingredients
@@ -261,7 +385,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
           </div>
         </div>
 
-        {/* VIP Checkbox - Glows Amber when active */}
+        {/* VIP Checkbox */}
         <div className="pt-0.5">
           <label
             className={`flex items-center gap-2 cursor-pointer p-2 rounded-xl border transition-all duration-300 ${
@@ -277,14 +401,16 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
               className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900 cursor-pointer transition-colors"
             />
             <span
-              className={`text-xs font-bold tracking-wide transition-colors duration-300 ${isVip ? "text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]" : "text-slate-400"}`}
+              className={`text-xs font-bold tracking-wide transition-colors duration-300 ${
+                isVip ? "text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]" : "text-slate-400"
+              }`}
             >
               Priority VIP Order 👑
             </span>
           </label>
         </div>
 
-        {/* Send Button - Vibrant Gradient with active press effect */}
+        {/* Submit Button */}
         <button
           type="submit"
           className="w-full mt-2 bg-gradient-to-r from-orange-500 via-red-500 to-orange-500 bg-[length:200%_auto] hover:bg-[center_right_1rem] text-white font-black py-2.5 px-3 rounded-xl transition-all duration-300 shadow-[0_0_20px_rgba(249,115,22,0.3)] hover:shadow-[0_0_30px_rgba(249,115,22,0.5)] active:scale-95 active:shadow-none uppercase tracking-widest text-[10px] flex justify-center items-center gap-2 group/btn"
