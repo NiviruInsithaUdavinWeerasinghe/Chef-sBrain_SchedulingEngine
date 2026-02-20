@@ -1,11 +1,14 @@
 package com.chefsbrain.scheduling_engine.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty; // Import this!
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Data
@@ -21,13 +24,12 @@ public class Order implements Comparable<Order> {
     private int tableNumber;
     private String dishName;
 
-    // Use Long so we can check ingredients later (Optional but good practice)
     private Long dishId;
 
     private int prepTimeMinutes;
 
     private int quantity;
-    // FIX: This tells Jackson "The JSON key is exactly 'isVip'"
+
     @JsonProperty("isVip")
     private boolean isVip;
 
@@ -36,15 +38,21 @@ public class Order implements Comparable<Order> {
 
     private Long workspaceId;
 
+    // ────────────────────────────────────────────────
+    // NEW FIELD: Customer-selected allergic ingredients
+    // ────────────────────────────────────────────────
+    @ElementCollection
+    @CollectionTable(name = "order_allergies", joinColumns = @JoinColumn(name = "order_id"))
+    @Column(name = "allergen")
+    private List<String> customerAllergies = new ArrayList<>();
+
     @Override
     public int compareTo(Order other) {
-        // VIP Logic: 'this' (VIP) comes before 'other' (Non-VIP).
         if (this.isVip && !other.isVip) {
             return -1;
         } else if (!this.isVip && other.isVip) {
             return 1;
         }
-        // Prep Sync Logic
         return this.calculatedStartTime.compareTo(other.calculatedStartTime);
     }
 }
