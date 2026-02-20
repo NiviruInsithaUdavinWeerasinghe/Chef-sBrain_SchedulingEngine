@@ -5,7 +5,6 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
   const [menu, setMenu] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch menu (to get dish images & fallback ingredients)
   useEffect(() => {
     if (!workspaceId) return;
     fetch(`http://localhost:8080/api/dishes?workspaceId=${workspaceId}`)
@@ -49,7 +48,7 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
 
       if (response.ok) {
         onNotify(`Order Completed: ${order.dishName}`, "success");
-        fetchQueue(); // Refresh immediately
+        fetchQueue();
       } else {
         onNotify("Failed to complete order.", "error");
       }
@@ -90,7 +89,6 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
         </div>
       </div>
 
-      {/* Queue Cards */}
       <div className="flex-1 bg-slate-950/60 border border-slate-800/60 rounded-xl p-3 overflow-y-auto custom-scrollbar pr-2 shadow-inner relative">
         <div className="sticky top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-50 z-20 mb-3"></div>
 
@@ -103,7 +101,8 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
           ) : (
             orders.map((order, index) => {
               const dish = menu.find((d) => d.name === order.dishName);
-              const hasAllergies = Array.isArray(order.customerAllergies) && order.customerAllergies.length > 0;
+              const allergies = order.customerAllergies || [];
+              const hasAllergies = allergies.length > 0;
 
               return (
                 <div
@@ -135,29 +134,23 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                         )}
                       </h3>
 
-                      {/* Allergy Warning - shown only when there are allergies */}
+                      {/* Smaller, more compact allergy warning */}
                       {hasAllergies && (
-                        <div className="mt-3 p-3 bg-red-950/65 border border-red-700/60 rounded-lg">
-                          <div className="flex items-center gap-2 text-red-300 text-xs font-bold uppercase tracking-wider mb-2 animate-pulse">
-                            <span className="text-lg">⚠</span>
-                            CRITICAL ALLERGY WARNING
+                        <div className="mt-2 p-2 bg-red-950/60 border border-red-800/50 rounded-md text-xs">
+                          <div className="flex items-center gap-1.5 text-red-300 font-bold uppercase tracking-wider mb-1">
+                            <span className="text-base animate-pulse">⚠</span>
+                            ALLERGY ALERT
                           </div>
-                          <p className="text-red-200 text-[10px] mb-2">
-                            **Do NOT use** these ingredients:
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {order.customerAllergies.map((ing) => (
+                          <div className="flex flex-wrap gap-1">
+                            {allergies.map((ing) => (
                               <span
                                 key={ing}
-                                className="bg-red-900/80 text-red-100 px-2.5 py-1 rounded text-[10px] font-medium border border-red-600/70"
+                                className="bg-red-900/70 text-red-100 px-2 py-0.5 rounded text-[10px] font-medium border border-red-700/60"
                               >
                                 {ing}
                               </span>
                             ))}
                           </div>
-                          <p className="text-red-400/90 text-[9px] mt-2 italic">
-                            Use separate prep area • Separate utensils • High risk
-                          </p>
                         </div>
                       )}
 
@@ -182,7 +175,7 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                               <span
                                 key={idx}
                                 className={`px-2 py-0.5 rounded-md text-[9px] font-medium border uppercase tracking-wider ${
-                                  hasAllergies && order.customerAllergies.includes(ing)
+                                  hasAllergies && allergies.includes(ing)
                                     ? "bg-red-900/50 text-red-300 border-red-700 line-through opacity-75"
                                     : "bg-slate-800 text-slate-300 border-slate-700"
                                 }`}
