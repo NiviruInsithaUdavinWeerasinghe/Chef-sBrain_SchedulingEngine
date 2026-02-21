@@ -10,6 +10,8 @@ export default function AdminPortal({ workspaceId, onNotify }) {
   const [prepTimeMinutes, setPrepTimeMinutes] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [ingredients, setIngredients] = useState("");
+  // --- NEW: State for substitutions mapping ---
+  const [substitutions, setSubstitutions] = useState({});
 
   const fetchMenu = useCallback(async () => {
     if (!workspaceId) return;
@@ -35,14 +37,27 @@ export default function AdminPortal({ workspaceId, onNotify }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Clean ingredients array
+    const activeIngredients = ingredients
+      .split(",")
+      .map((i) => i.trim())
+      .filter((i) => i !== "");
+
+    // Clean substitutions (only save keys that exist in ingredients and aren't empty)
+    const cleanSubstitutions = {};
+    activeIngredients.forEach((ing) => {
+      if (substitutions[ing] && substitutions[ing].trim() !== "") {
+        cleanSubstitutions[ing] = substitutions[ing].trim();
+      }
+    });
+
     const dishData = {
       name,
       prepTimeMinutes: parseInt(prepTimeMinutes),
       imageUrl,
-      ingredients: ingredients
-        .split(",")
-        .map((i) => i.trim())
-        .filter((i) => i !== ""),
+      ingredients: activeIngredients,
+      substitutions: cleanSubstitutions,
       workspaceId: parseInt(workspaceId),
     };
 
@@ -82,6 +97,7 @@ export default function AdminPortal({ workspaceId, onNotify }) {
     setPrepTimeMinutes(dish.prepTimeMinutes);
     setImageUrl(dish.imageUrl || "");
     setIngredients(dish.ingredients ? dish.ingredients.join(", ") : "");
+    setSubstitutions(dish.substitutions || {}); // --- NEW: Load subs on edit ---
   };
 
   const handleDelete = async (id) => {
@@ -133,6 +149,7 @@ export default function AdminPortal({ workspaceId, onNotify }) {
     setPrepTimeMinutes("");
     setImageUrl("");
     setIngredients("");
+    setSubstitutions({}); // Reset subs
   };
 
   return (
@@ -175,8 +192,9 @@ export default function AdminPortal({ workspaceId, onNotify }) {
                       {dish.name}
                     </h3>
                     <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">
-                      Prep: {dish.prepTimeMinutes}m | Tags:{" "}
-                      {dish.ingredients?.length || 0}
+                      Prep: {dish.prepTimeMinutes}m | INGREDIENTS:{" "}
+                      {dish.ingredients?.length || 0} | Subs:{" "}
+                      {Object.keys(dish.substitutions || {}).length}
                     </p>
                   </div>
                 </div>
@@ -202,63 +220,101 @@ export default function AdminPortal({ workspaceId, onNotify }) {
 
       {/* Right Column: Add/Edit Form */}
       <div className="flex-1 lg:max-w-[350px] flex flex-col min-h-0 bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xl">
-        <h2 className="text-base font-bold text-white mb-4 border-b border-slate-800 pb-2 flex items-center gap-2">
+        <h2 className="text-base font-bold text-white mb-4 border-b border-slate-800 pb-2 flex items-center gap-2 shrink-0">
           <span className="text-orange-500">{isEditing ? "✏️" : "➕"}</span>{" "}
           {isEditing ? "Edit Dish" : "Add New Dish"}
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Dish Name
-            </label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-orange-500 outline-none"
-              placeholder="e.g. Spicy Tacos"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Prep Time (Mins)
-            </label>
-            <input
-              type="number"
-              required
-              min="1"
-              value={prepTimeMinutes}
-              onChange={(e) => setPrepTimeMinutes(e.target.value)}
-              className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-orange-500 outline-none"
-              placeholder="15"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Image URL
-            </label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-orange-500 outline-none"
-              placeholder="https://..."
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Ingredients / Tags
-            </label>
-            <textarea
-              value={ingredients}
-              onChange={(e) => setIngredients(e.target.value)}
-              className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-orange-500 outline-none resize-none h-20"
-              placeholder="Beef, Dairy, Spicy... (Comma separated)"
-            />
+
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 h-full">
+          {/* Scrollable Container */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-3 mb-4">
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Dish Name
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-orange-500 outline-none"
+                placeholder="e.g. Spicy Tacos"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Prep Time (Mins)
+              </label>
+              <input
+                type="number"
+                required
+                min="1"
+                value={prepTimeMinutes}
+                onChange={(e) => setPrepTimeMinutes(e.target.value)}
+                className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-orange-500 outline-none"
+                placeholder="15"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Image URL
+              </label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-orange-500 outline-none"
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                Ingredients / Tags
+              </label>
+              <textarea
+                value={ingredients}
+                onChange={(e) => setIngredients(e.target.value)}
+                className="w-full mt-1 p-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:border-orange-500 outline-none resize-none h-20 shrink-0"
+                placeholder="Beef, Dairy, Spicy... (Comma separated)"
+              />
+            </div>
+
+            {/* --- Dynamic Substitution Fields --- */}
+            {ingredients.split(",").filter((i) => i.trim() !== "").length >
+              0 && (
+              <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 space-y-2">
+                <label className="text-[9px] font-bold text-orange-400 uppercase tracking-widest">
+                  Suggested Substitutes
+                </label>
+                {ingredients
+                  .split(",")
+                  .map((i) => i.trim())
+                  .filter((i) => i !== "")
+                  .map((ing) => (
+                    <div key={ing} className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-400 w-20 truncate">
+                        {ing}:
+                      </span>
+                      <input
+                        type="text"
+                        value={substitutions[ing] || ""}
+                        onChange={(e) =>
+                          setSubstitutions({
+                            ...substitutions,
+                            [ing]: e.target.value,
+                          })
+                        }
+                        className="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs text-white outline-none focus:border-orange-500"
+                        placeholder="Substitute..."
+                      />
+                    </div>
+                  ))}
+              </div>
+            )}
           </div>
 
-          <div className="pt-2 flex gap-2">
+          {/* Fixed Footer Buttons */}
+          <div className="pt-2 flex gap-2 shrink-0 border-t border-slate-800">
             {isEditing && (
               <button
                 type="button"

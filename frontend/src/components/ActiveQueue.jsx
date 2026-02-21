@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export default function ActiveQueue({ onNotify, workspaceId }) {
   const [orders, setOrders] = useState([]);
@@ -19,7 +19,7 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
       .catch((err) => console.error("Error fetching menu:", err));
   }, [workspaceId]);
 
-  const fetchQueue = async () => {
+  const fetchQueue = useCallback(async () => {
     if (!workspaceId) return;
     try {
       const response = await fetch(
@@ -36,13 +36,13 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [workspaceId]);
 
   useEffect(() => {
     fetchQueue();
     const interval = setInterval(fetchQueue, 5000);
     return () => clearInterval(interval);
-  }, [workspaceId]);
+  }, [fetchQueue]);
 
   const handleComplete = async (order) => {
     try {
@@ -153,14 +153,29 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                             Allergy:
                           </div>
                           <div className="flex flex-wrap gap-1">
-                            {allergies.map((ing) => (
-                              <span
-                                key={ing}
-                                className="bg-rose-900/50 text-rose-200 border border-rose-700 opacity-75 px-2 py-0.5 rounded-md text-[9px] font-medium uppercase tracking-wider"
-                              >
-                                {ing}
-                              </span>
-                            ))}
+                            {allergies.map((ing) => {
+                              const sub = dish?.substitutions?.[ing];
+                              return (
+                                <span
+                                  key={ing}
+                                  className="bg-rose-900/50 text-white border border-rose-700 px-2 py-0.5 rounded-md text-[9px] font-medium uppercase tracking-wider flex items-center gap-1.5"
+                                >
+                                  {sub ? (
+                                    <>
+                                      <span className="line-through text-white">
+                                        {ing}
+                                      </span>
+                                      <span className="text-orange-400">→</span>
+                                      <span className="text-emerald-400 font-bold">
+                                        {sub}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span>{ing}</span>
+                                  )}
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -182,18 +197,23 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
 
                         return (
                           <div className="flex flex-wrap gap-1.5 mt-2 pr-4">
-                            {ingArray.map((ing, idx) => (
-                              <span
-                                key={idx}
-                                className={`px-2 py-0.5 rounded-md text-[9px] font-medium border uppercase tracking-wider ${
-                                  hasAllergies && allergies.includes(ing)
-                                    ? "bg-rose-900/50 text-rose-300 border-rose-700 line-through opacity-75"
-                                    : "bg-slate-800 text-slate-300 border-slate-700"
-                                }`}
-                              >
-                                {ing}
-                              </span>
-                            ))}
+                            {ingArray.map((ing, idx) => {
+                              const isAllergic =
+                                hasAllergies && allergies.includes(ing);
+
+                              return (
+                                <span
+                                  key={idx}
+                                  className={`px-2 py-0.5 rounded-md text-[9px] font-medium border uppercase tracking-wider ${
+                                    isAllergic
+                                      ? "bg-rose-900/50 text-rose-300 border-rose-700 line-through opacity-75"
+                                      : "bg-slate-800 text-slate-300 border-slate-700"
+                                  }`}
+                                >
+                                  {ing}
+                                </span>
+                              );
+                            })}
                           </div>
                         );
                       })()}

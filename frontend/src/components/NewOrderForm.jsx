@@ -5,23 +5,41 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
 
   // Form State
   const [selectedDish, setSelectedDish] = useState("");
+  const [selectedDishId, setSelectedDishId] = useState(null);
   const [dishImage, setDishImage] = useState("");
   const [ingredients, setIngredients] = useState([]); // array of strings
   const [quantity, setQuantity] = useState(1);
   const [tableNumber, setTableNumber] = useState("");
-  const [prepTime, setPrepTime] = useState(0);
   const [isVip, setIsVip] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Derive prep time dynamically from the current menu data
+  const prepTime =
+    menu.find((d) => d.id === selectedDishId)?.prepTimeMinutes || 0;
 
   // Allergy selection state (kept — user can still mark allergies)
   const [selectedAllergies, setSelectedAllergies] = useState([]);
 
   useEffect(() => {
-    if (!workspaceId) return;
-    fetch(`http://localhost:8080/api/dishes?workspaceId=${workspaceId}`)
-      .then((res) => res.json())
-      .then((data) => setMenu(data))
-      .catch((err) => console.error("Error fetching menu:", err));
+    const fetchMenu = async () => {
+      if (!workspaceId) return;
+      try {
+        const response = await fetch(
+          `http://localhost:8080/api/dishes?workspaceId=${workspaceId}`,
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setMenu(data);
+        }
+      } catch (error) {
+        console.error("Error fetching menu:", error);
+      }
+    };
+
+    fetchMenu();
+    // Poll the menu every 5 seconds to catch updated adaptive prep times
+    const interval = setInterval(fetchMenu, 5000);
+    return () => clearInterval(interval);
   }, [workspaceId]);
 
   const handleDishSelect = (dishName) => {
@@ -30,7 +48,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
 
     const foundDish = menu.find((dish) => dish.name === dishName);
     if (foundDish) {
-      setPrepTime(foundDish.prepTimeMinutes);
+      setSelectedDishId(foundDish.id);
 
       let ingArray = [];
       if (Array.isArray(foundDish.ingredients)) {
@@ -44,7 +62,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
       setIngredients(ingArray);
       setDishImage(foundDish.imageUrl || "");
     } else {
-      setPrepTime(0);
+      setSelectedDishId(null);
       setIngredients([]);
       setDishImage("");
     }
@@ -56,7 +74,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
     setSelectedAllergies((prev) =>
       prev.includes(ingredient)
         ? prev.filter((i) => i !== ingredient)
-        : [...prev, ingredient]
+        : [...prev, ingredient],
     );
   };
 
@@ -69,6 +87,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
     }
 
     const newOrder = {
+      dishId: selectedDishId,
       dishName: selectedDish,
       quantity: parseInt(quantity),
       tableNumber: parseInt(tableNumber),
@@ -89,20 +108,20 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
       if (response.ok) {
         onNotify(
           `Order fired to kitchen: ${quantity}x ${selectedDish}${
-            selectedAllergies.length > 0 
-              ? ` (Allergies: ${selectedAllergies.join(", ")})` 
+            selectedAllergies.length > 0
+              ? ` (Allergies: ${selectedAllergies.join(", ")})`
               : ""
           }`,
-          "success"
+          "success",
         );
 
         // Reset form
         setSelectedDish("");
+        setSelectedDishId(null);
         setDishImage("");
         setIngredients([]);
         setQuantity(1);
         setTableNumber("");
-        setPrepTime(0);
         setIsVip(false);
         setSelectedAllergies([]);
       } else {
@@ -187,7 +206,9 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
                       }`}
                     >
                       {selectedDish === dish.name && (
-                        <span className="text-orange-500 text-xs shrink-0">✓</span>
+                        <span className="text-orange-500 text-xs shrink-0">
+                          ✓
+                        </span>
                       )}
                       {dish.imageUrl && (
                         <img
@@ -320,7 +341,9 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
             />
             <span
               className={`text-xs font-bold tracking-wide transition-colors duration-300 ${
-                isVip ? "text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]" : "text-slate-400"
+                isVip
+                  ? "text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]"
+                  : "text-slate-400"
               }`}
             >
               Priority VIP Order 👑
