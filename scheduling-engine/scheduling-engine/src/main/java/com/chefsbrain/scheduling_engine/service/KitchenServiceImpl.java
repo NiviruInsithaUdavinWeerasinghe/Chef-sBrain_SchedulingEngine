@@ -74,7 +74,7 @@ public class KitchenServiceImpl implements KitchenService {
             if (actualTimeMinutes > 0) {
                 dishRepository.findById(order.getDishId()).ifPresent(dish -> {
                     // Exponential Moving Average (EMA)
-                    // 70% historical weight, 30% new actual time
+                    // 90% historical weight, 10% new actual time
                     int updatedPrepTime = (int) Math.round((dish.getPrepTimeMinutes() * 0.9) + (actualTimeMinutes * 0.1));
 
                     // Safety check: Ensure the prep time doesn't drop below 1 minute
