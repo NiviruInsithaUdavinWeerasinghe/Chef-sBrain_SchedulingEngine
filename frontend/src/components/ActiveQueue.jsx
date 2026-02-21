@@ -17,7 +17,7 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
     if (!workspaceId) return;
     try {
       const response = await fetch(
-        `http://localhost:8080/api/orders/queue?workspaceId=${workspaceId}`
+        `http://localhost:8080/api/orders/queue?workspaceId=${workspaceId}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -40,11 +40,14 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
 
   const handleComplete = async (order) => {
     try {
-      const response = await fetch("http://localhost:8080/api/orders/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order),
-      });
+      const response = await fetch(
+        "http://localhost:8080/api/orders/complete",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(order),
+        },
+      );
 
       if (response.ok) {
         onNotify(`Order Completed: ${order.dishName}`, "success");
@@ -108,11 +111,13 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                 <div
                   key={order.id || index}
                   className={`group relative bg-slate-900/40 backdrop-blur-md border rounded-lg p-3 transition-all duration-300 hover:bg-slate-900/80 hover:translate-x-1 ${
-                    hasAllergies
-                      ? "border-red-600/70 shadow-[0_0_18px_rgba(220,38,38,0.4)]"
-                      : order.isVip
-                      ? "border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.08)]"
-                      : "border-slate-800/80"
+                    hasAllergies && order.isVip
+                      ? "border-rose-500/80 shadow-[0_0_8px_rgba(244,63,94,0.5),0_0_8px_rgba(245,158,11,0.5)]"
+                      : hasAllergies
+                        ? "border-rose-500/80 shadow-[0_0_10px_rgba(244,63,94,0.5)]"
+                        : order.isVip
+                          ? "border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.08)]"
+                          : "border-slate-800/80"
                   }`}
                 >
                   <div className="flex justify-between items-start gap-3">
@@ -134,18 +139,18 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                         )}
                       </h3>
 
-                      {/* Smaller, more compact allergy warning */}
+                      {/* Redesigned Noticeable Allergy Warning */}
                       {hasAllergies && (
-                        <div className="mt-2 p-2 bg-red-950/60 border border-red-800/50 rounded-md text-xs">
-                          <div className="flex items-center gap-1.5 text-red-300 font-bold uppercase tracking-wider mb-1">
-                            <span className="text-base animate-pulse">⚠</span>
-                            ALLERGY ALERT
+                        <div className="mt-2 flex flex-wrap items-center gap-2 bg-gradient-to-r from-rose-500/20 to-transparent p-1.5 rounded-r border-l-4 border-rose-500">
+                          <div className="flex items-center gap-1 text-rose-400 font-black uppercase tracking-widest text-[10px]">
+                            <span className="text-sm animate-pulse">⚠</span>
+                            Allergy:
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {allergies.map((ing) => (
                               <span
                                 key={ing}
-                                className="bg-red-900/70 text-red-100 px-2 py-0.5 rounded text-[10px] font-medium border border-red-700/60"
+                                className="bg-rose-900/50 text-rose-200 border border-rose-700 opacity-75 px-2 py-0.5 rounded-md text-[9px] font-medium uppercase tracking-wider"
                               >
                                 {ing}
                               </span>
@@ -176,7 +181,7 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                                 key={idx}
                                 className={`px-2 py-0.5 rounded-md text-[9px] font-medium border uppercase tracking-wider ${
                                   hasAllergies && allergies.includes(ing)
-                                    ? "bg-red-900/50 text-red-300 border-red-700 line-through opacity-75"
+                                    ? "bg-rose-900/50 text-rose-300 border-rose-700 line-through opacity-75"
                                     : "bg-slate-800 text-slate-300 border-slate-700"
                                 }`}
                               >
@@ -190,13 +195,22 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                       {/* Order details */}
                       <div className="flex gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest flex-wrap">
                         <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
-                          Qty <span className="text-slate-100">{order.quantity}</span>
+                          Qty{" "}
+                          <span className="text-slate-100">
+                            {order.quantity}
+                          </span>
                         </span>
                         <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
-                          Table <span className="text-slate-100">{order.tableNumber}</span>
+                          Table{" "}
+                          <span className="text-slate-100">
+                            {order.tableNumber}
+                          </span>
                         </span>
                         <span className="bg-slate-950/80 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">
-                          Prep <span className="text-slate-100">{order.prepTimeMinutes}m</span>
+                          Prep{" "}
+                          <span className="text-slate-100">
+                            {order.prepTimeMinutes}m
+                          </span>
                         </span>
                       </div>
                     </div>
