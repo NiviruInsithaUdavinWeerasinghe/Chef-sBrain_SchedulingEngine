@@ -4,6 +4,12 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
   const [orders, setOrders] = useState([]);
   const [menu, setMenu] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!workspaceId) return;
@@ -212,6 +218,57 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                             {order.prepTimeMinutes}m
                           </span>
                         </span>
+                        {(() => {
+                          if (!order.calculatedStartTime) return null;
+                          const targetTime = new Date(
+                            order.calculatedStartTime,
+                          );
+                          const diffMs = targetTime - currentTime;
+                          const isOverdue = diffMs < 0;
+
+                          const absDiffMs = Math.abs(diffMs);
+                          const mins = Math.floor(absDiffMs / 60000);
+                          const secs = Math.floor((absDiffMs % 60000) / 1000);
+                          const formattedSecs = secs
+                            .toString()
+                            .padStart(2, "0");
+                          const diffMins = diffMs / 60000;
+
+                          // Orange warning triggers when 25% or less of the prep time is remaining
+                          const warningThreshold = order.prepTimeMinutes * 0.25;
+
+                          return (
+                            <span
+                              className={`group/timer cursor-default px-1.5 py-0.5 rounded border transition-colors duration-300 ${
+                                isOverdue
+                                  ? "bg-rose-950/80 text-rose-400 border-rose-800/50 animate-pulse"
+                                  : diffMins <= warningThreshold
+                                    ? "bg-amber-950/80 text-amber-400 border-amber-800/50"
+                                    : "bg-emerald-950/80 text-emerald-400 border-emerald-800/50"
+                              }`}
+                            >
+                              Timer{" "}
+                              <span
+                                className={
+                                  isOverdue
+                                    ? "text-rose-100"
+                                    : diffMins <= warningThreshold
+                                      ? "text-amber-100"
+                                      : "text-emerald-100"
+                                }
+                              >
+                                <span className="group-hover/timer:hidden">
+                                  {isOverdue ? `+${mins}m Late` : `${mins}m`}
+                                </span>
+                                <span className="hidden group-hover/timer:inline">
+                                  {isOverdue
+                                    ? `+${mins}:${formattedSecs} Late`
+                                    : `${mins}:${formattedSecs}`}
+                                </span>
+                              </span>
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
 
