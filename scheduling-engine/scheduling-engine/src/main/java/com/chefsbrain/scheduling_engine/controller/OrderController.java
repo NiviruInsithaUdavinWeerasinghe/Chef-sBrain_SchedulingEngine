@@ -1,6 +1,7 @@
 package com.chefsbrain.scheduling_engine.controller;
 
 import com.chefsbrain.scheduling_engine.model.Order;
+import com.chefsbrain.scheduling_engine.repository.DishRepository;
 import com.chefsbrain.scheduling_engine.service.KitchenService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +15,12 @@ import java.util.List;
 public class OrderController {
 
     private final KitchenService kitchenService;
+    private final DishRepository dishRepository;
 
-    // Constructor Injection: Connects the Controller to the Service
-    public OrderController(KitchenService kitchenService) {
+    // Constructor Injection: Connects the Controller to the Service and Repository
+    public OrderController(KitchenService kitchenService, DishRepository dishRepository) {
         this.kitchenService = kitchenService;
+        this.dishRepository = dishRepository;
     }
 
     /**
@@ -30,9 +33,15 @@ public class OrderController {
         // 1. Set the timestamp for when the order was received
         order.setOrderPlacedTime(LocalDateTime.now());
 
-        // 2. Calculate the "Start Time" (Logic: Order Time + Prep Time)
-        // Note: In a real app, this might be "Target Serve Time" - "Prep Time".
-        // For now, we simulate urgency by adding prep time to current time.
+        // --- NEW: Fetch the LATEST learned prep time from the database ---
+        if (order.getDishId() != null) {
+            dishRepository.findById(order.getDishId()).ifPresent(dish -> {
+                // Override whatever the frontend sent with the smart, learned time
+                order.setPrepTimeMinutes(dish.getPrepTimeMinutes());
+            });
+        }
+
+        // 2. Calculate the "Start Time" (Logic: Order Time + Smart Prep Time)
         order.setCalculatedStartTime(order.getOrderPlacedTime().plusMinutes(order.getPrepTimeMinutes()));
 
         // 3. Send to the "Brain" (Service Layer)

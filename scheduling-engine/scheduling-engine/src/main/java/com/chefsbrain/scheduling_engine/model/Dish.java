@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @Data
@@ -25,8 +26,15 @@ public class Dish {
     private String imageUrl; // New field for the food image
 
     // Required for "Safety Validation": List of ingredients for allergy checking
-    @ElementCollection // This tells JPA to store this list in a separate sub-table
+    @ElementCollection
     private List<String> ingredients;
+
+    // --- NEW: Map for Allergy Substitutions (e.g., "Dairy" -> "Oat Milk") ---
+    @ElementCollection
+    @CollectionTable(name = "dish_substitutions", joinColumns = @JoinColumn(name = "dish_id"))
+    @MapKeyColumn(name = "ingredient_name")
+    @Column(name = "substitute_name")
+    private Map<String, String> substitutions;
 
     private Long workspaceId;
     // Optional: Useful for the Frontend UI later
