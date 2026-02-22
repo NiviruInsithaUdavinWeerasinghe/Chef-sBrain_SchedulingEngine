@@ -59,7 +59,3 @@ This project relies on robust data structures and algorithms to solve real-world
 * **Order Insertion:** $O(\log N)$ via Min-Heap.
 * **Allergy Check:** $O(1)$ via Hash Map.
 * **History Traversal:** $O(1)$ via Doubly Linked List.
-
----
-
-![Architecture Diagram/Workflow](insert_image_link_here)
