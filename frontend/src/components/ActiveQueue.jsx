@@ -13,7 +13,9 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
 
   useEffect(() => {
     if (!workspaceId) return;
-    fetch(`http://localhost:8080/api/dishes?workspaceId=${workspaceId}`)
+    fetch(
+      `${import.meta.env.VITE_API_URL}/api/dishes?workspaceId=${workspaceId}`,
+    )
       .then((res) => res.json())
       .then((data) => setMenu(data))
       .catch((err) => console.error("Error fetching menu:", err));
@@ -23,7 +25,7 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
     if (!workspaceId) return;
     try {
       const response = await fetch(
-        `http://localhost:8080/api/orders/queue?workspaceId=${workspaceId}`,
+        `${import.meta.env.VITE_API_URL}/api/orders/queue?workspaceId=${workspaceId}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -47,7 +49,7 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
   const handleComplete = async (order) => {
     try {
       const response = await fetch(
-        "http://localhost:8080/api/orders/complete",
+        `${import.meta.env.VITE_API_URL}/api/orders/complete`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

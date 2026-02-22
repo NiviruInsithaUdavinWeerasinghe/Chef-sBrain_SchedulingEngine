@@ -25,7 +25,7 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
       if (!workspaceId) return;
       try {
         const response = await fetch(
-          `http://localhost:8080/api/dishes?workspaceId=${workspaceId}`,
+          `${import.meta.env.VITE_API_URL}/api/dishes?workspaceId=${workspaceId}`,
         );
         if (response.ok) {
           const data = await response.json();
@@ -99,11 +99,14 @@ export default function NewOrderForm({ onNotify, workspaceId }) {
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newOrder),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/orders`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newOrder),
+        },
+      );
 
       if (response.ok) {
         onNotify(

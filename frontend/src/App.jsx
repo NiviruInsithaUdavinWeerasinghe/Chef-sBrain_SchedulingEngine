@@ -69,13 +69,16 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Check backend connection
   useEffect(() => {
     const checkServer = async () => {
+      // Ensure we never send "undefined" or an empty string.
+      // If workspaceId is falsy, fallback to "0".
+      const idToUse =
+        workspaceId && workspaceId !== "undefined" ? workspaceId : "0";
+
       try {
-        // Passing a dummy workspaceId to fulfill the backend requirement for the health check
         const res = await fetch(
-          "http://localhost:8080/api/dishes?workspaceId=0",
+          `${import.meta.env.VITE_API_URL}/api/dishes?workspaceId=${idToUse}`,
         );
         if (res.ok) {
           setServerStatus("online");
@@ -91,7 +94,7 @@ function App() {
     checkServer();
     const interval = setInterval(checkServer, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [workspaceId]);
 
   // Notification Handler
   const showNotification = (message, type = "success") => {
@@ -114,7 +117,7 @@ function App() {
     e.preventDefault();
     try {
       const response = await fetch(
-        "http://localhost:8080/api/workspaces/verify-admin",
+        `${import.meta.env.VITE_API_URL}/api/workspaces/verify-admin`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" }, // Send workspaceId so the backend knows which kitchen to verify
@@ -148,7 +151,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://localhost:8080/api/workspaces/create",
+        `${import.meta.env.VITE_API_URL}/api/workspaces/create`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -162,12 +165,12 @@ function App() {
         // Admin automatically logged in, save details to session
         localStorage.setItem("chefBrain_isLoggedIn", "true");
         localStorage.setItem("chefBrain_kitchenName", spaceForm.name);
-        localStorage.setItem("chefBrain_workspaceId", data.workspaceId);
+        localStorage.setItem("chefBrain_workspaceId", data.id); // Backend returns 'id'
         localStorage.setItem("chefBrain_pwd", data.password); // Store for future sessions
 
         setIsLoggedIn(true);
         setKitchenName(spaceForm.name);
-        setWorkspaceId(data.workspaceId);
+        setWorkspaceId(data.id);
         setShowCreateSpace(false);
         setCurrentScreen("kitchen");
 
@@ -194,7 +197,7 @@ function App() {
 
     try {
       const response = await fetch(
-        "http://localhost:8080/api/workspaces/verify",
+        `${import.meta.env.VITE_API_URL}/api/workspaces/verify`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -643,9 +646,14 @@ function App() {
               {/* Dummy Data Button */}{" "}
               <button
                 onClick={() => {
+                  // Guard against undefined workspaceId
+                  const idToUse =
+                    workspaceId && workspaceId !== "undefined"
+                      ? workspaceId
+                      : "0";
+
                   fetch(
-                    "http://localhost:8080/api/dishes/load-dummy?workspaceId=" +
-                      workspaceId,
+                    `${import.meta.env.VITE_API_URL}/api/dishes/load-dummy?workspaceId=${idToUse}`,
                     { method: "POST" },
                   )
                     .then((res) => {
