@@ -107,7 +107,7 @@ public class WorkspaceController {
             helper.setTo(to);
             helper.setSubject("🔥 You're invited to join " + workspaceName + " on Chef's Brain!");
 
-            String loginUrl = "http://localhost:5173";
+            String loginUrl = "https://chefs-brain-two.vercel.app";
 
             String htmlContent = "<div style=\"background-color: #f3f4f6; padding: 40px 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\">\n" +
                     "  <div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;\">\n" +
