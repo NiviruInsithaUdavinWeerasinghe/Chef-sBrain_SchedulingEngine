@@ -17,7 +17,7 @@ export default function AdminPortal({ workspaceId, onNotify }) {
     if (!workspaceId) return;
     try {
       const res = await fetch(
-        `http://localhost:8080/api/dishes?workspaceId=${workspaceId}`,
+        `${import.meta.env.VITE_API_URL}/api/dishes?workspaceId=${workspaceId}`,
       );
       if (res.ok) {
         const data = await res.json();
@@ -63,8 +63,8 @@ export default function AdminPortal({ workspaceId, onNotify }) {
 
     try {
       const url = isEditing
-        ? `http://localhost:8080/api/dishes/${currentDishId}`
-        : `http://localhost:8080/api/dishes`;
+        ? `${import.meta.env.VITE_API_URL}/api/dishes/${currentDishId}`
+        : `${import.meta.env.VITE_API_URL}/api/dishes`;
 
       const method = isEditing ? "PUT" : "POST";
 
@@ -103,9 +103,12 @@ export default function AdminPortal({ workspaceId, onNotify }) {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this dish?")) return;
     try {
-      const res = await fetch(`http://localhost:8080/api/dishes/${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/dishes/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (res.ok) {
         onNotify("Dish deleted.", "success");
         fetchMenu();
@@ -127,7 +130,7 @@ export default function AdminPortal({ workspaceId, onNotify }) {
       return;
     try {
       const res = await fetch(
-        `http://localhost:8080/api/dishes/unload?workspaceId=${workspaceId}`,
+        `${import.meta.env.VITE_API_URL}/api/dishes/unload?workspaceId=${workspaceId}`,
         { method: "DELETE" },
       );
       if (res.ok) {

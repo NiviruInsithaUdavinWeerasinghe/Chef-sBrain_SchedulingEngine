@@ -45,7 +45,9 @@ public class WorkspaceController {
         if (invites != null && !invites.trim().isEmpty()) {
             String[] emailArray = invites.split(",");
             for (String email : emailArray) {
-                sendInviteEmail(email.trim(), name, adminEmail, randomPassword);
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    sendInviteEmail(email.trim(), name, adminEmail, randomPassword);
+                });
             }
         }
 
