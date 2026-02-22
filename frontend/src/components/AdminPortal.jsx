@@ -156,9 +156,9 @@ export default function AdminPortal({ workspaceId, onNotify }) {
   };
 
   return (
-    <div className="h-full flex flex-col lg:flex-row gap-5 p-2 animate-fade-in">
+    <div className="min-h-full lg:h-full overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row gap-5 p-2 animate-fade-in no-scrollbar lg:custom-scrollbar">
       {/* Left Column: Menu List */}
-      <div className="flex-[2] flex flex-col min-h-0 bg-slate-900/40 border border-slate-800 rounded-2xl p-4 relative shadow-inner">
+      <div className="lg:flex-[2] flex flex-col lg:min-h-0 bg-slate-900/40 border border-slate-800 rounded-2xl p-4 relative shadow-inner">
         <div className="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <span className="text-orange-500">📋</span> Manage Menu
@@ -171,7 +171,7 @@ export default function AdminPortal({ workspaceId, onNotify }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+        <div className="flex-1 overflow-visible lg:overflow-y-auto no-scrollbar lg:custom-scrollbar lg:pr-2 space-y-3">
           {menu.length === 0 ? (
             <div className="h-40 flex items-center justify-center text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-xl">
               Menu is empty. Add some dishes!
@@ -222,15 +222,18 @@ export default function AdminPortal({ workspaceId, onNotify }) {
       </div>
 
       {/* Right Column: Add/Edit Form */}
-      <div className="flex-1 lg:max-w-[350px] flex flex-col min-h-0 bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xl">
+      <div className="lg:flex-1 lg:max-w-[350px] flex flex-col lg:min-h-0 bg-slate-900 rounded-2xl border border-slate-800 p-4 shadow-xl shrink-0">
         <h2 className="text-base font-bold text-white mb-4 border-b border-slate-800 pb-2 flex items-center gap-2 shrink-0">
           <span className="text-orange-500">{isEditing ? "✏️" : "➕"}</span>{" "}
           {isEditing ? "Edit Dish" : "Add New Dish"}
         </h2>
 
-        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 h-full">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col lg:min-h-0 h-auto lg:h-full"
+        >
           {/* Scrollable Container */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 space-y-3 mb-4">
+          <div className="flex-1 overflow-visible lg:overflow-y-auto no-scrollbar lg:custom-scrollbar lg:pr-1 space-y-3 mb-4">
             <div>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 Dish Name

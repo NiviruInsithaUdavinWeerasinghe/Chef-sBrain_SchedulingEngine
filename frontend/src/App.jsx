@@ -274,7 +274,7 @@ function App() {
 
   // --- Render Main App ---
   return (
-    <div className="fixed inset-0 overflow-hidden flex flex-col bg-slate-950 p-3 md:p-5 font-sans text-slate-200 selection:bg-orange-500/30 animate-fade-in">
+    <div className="fixed inset-0 overflow-y-auto lg:overflow-hidden flex flex-col bg-slate-950 p-3 md:p-5 font-sans text-slate-200 selection:bg-orange-500/30 animate-fade-in no-scrollbar lg:custom-scrollbar">
       {/* --- Fixed Edge-of-Screen Notification --- */}
       <div className="fixed top-4 right-4 z-[200]">
         {notification.show && (
@@ -748,11 +748,11 @@ function App() {
           </nav>
 
           {/* Main Dashboard Layout */}
-          <main className="max-w-7xl w-full mx-auto flex-1 min-h-0 overflow-hidden relative">
+          <main className="max-w-7xl w-full mx-auto flex-1 min-h-0 overflow-y-auto lg:overflow-hidden relative no-scrollbar lg:custom-scrollbar">
             {currentView === "active" ? (
               <div
                 key="active-view"
-                className="h-full flex flex-col lg:flex-row gap-5 animate-fade-in"
+                className="min-h-full lg:h-full flex flex-col lg:flex-row gap-5 animate-fade-in"
               >
                 {/* Left Column: Active Queue Shell */}{" "}
                 <div className="flex-1 flex flex-col relative min-h-0">
@@ -781,7 +781,7 @@ function App() {
             ) : (
               <div
                 key="admin-view"
-                className="h-full flex flex-col relative min-h-0 w-full animate-fade-in"
+                className="min-h-full lg:h-full flex flex-col relative min-h-0 w-full animate-fade-in"
               >
                 {" "}
                 <AdminPortal
