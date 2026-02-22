@@ -68,7 +68,7 @@ public class KitchenServiceImpl implements KitchenService {
         // --- ADAPTIVE PREP TIME LEARNING ---
         if (order.getOrderPlacedTime() != null && order.getDishId() != null) {
             // Calculate actual time taken in minutes
-            long actualTimeMinutes = Duration.between(order.getOrderPlacedTime(), LocalDateTime.now()).toMinutes();
+            long actualTimeMinutes = Duration.between(order.getOrderPlacedTime(), LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo"))).toMinutes();
 
             // Validate the time is reasonable (ignore immediate accidental clicks)
             if (actualTimeMinutes > 0) {

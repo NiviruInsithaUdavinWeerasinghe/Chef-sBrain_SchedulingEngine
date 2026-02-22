@@ -31,7 +31,7 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<Order> placeOrder(@RequestBody Order order) {
         // 1. Set the timestamp for when the order was received
-        order.setOrderPlacedTime(LocalDateTime.now());
+        order.setOrderPlacedTime(LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
 
         // --- NEW: Fetch the LATEST learned prep time from the database ---
         if (order.getDishId() != null) {

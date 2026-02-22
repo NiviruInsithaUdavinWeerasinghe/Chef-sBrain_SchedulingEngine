@@ -18,9 +18,10 @@ function App() {
   const [kitchenName, setKitchenName] = useState(
     () => localStorage.getItem("chefBrain_kitchenName") || "",
   );
-  const [workspaceId, setWorkspaceId] = useState(
-    () => localStorage.getItem("chefBrain_workspaceId") || "",
-  );
+  const [workspaceId, setWorkspaceId] = useState(() => {
+    const stored = localStorage.getItem("chefBrain_workspaceId");
+    return stored && stored !== "undefined" ? stored : "";
+  });
 
   // --- Create Space Modal State ---
   const [showCreateSpace, setShowCreateSpace] = useState(false);
@@ -165,12 +166,12 @@ function App() {
         // Admin automatically logged in, save details to session
         localStorage.setItem("chefBrain_isLoggedIn", "true");
         localStorage.setItem("chefBrain_kitchenName", spaceForm.name);
-        localStorage.setItem("chefBrain_workspaceId", data.id); // Backend returns 'id'
+        localStorage.setItem("chefBrain_workspaceId", data.workspaceId); // Fixed key
         localStorage.setItem("chefBrain_pwd", data.password); // Store for future sessions
 
         setIsLoggedIn(true);
         setKitchenName(spaceForm.name);
-        setWorkspaceId(data.id);
+        setWorkspaceId(data.workspaceId); // Fixed key
         setShowCreateSpace(false);
         setCurrentScreen("kitchen");
 
