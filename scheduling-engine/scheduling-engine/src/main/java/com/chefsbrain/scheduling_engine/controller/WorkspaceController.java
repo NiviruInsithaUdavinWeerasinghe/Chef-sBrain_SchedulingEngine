@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/workspaces")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5175"})
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5175", "https://chefs-brain-two.vercel.app"})
 public class WorkspaceController {
 
     @Autowired
