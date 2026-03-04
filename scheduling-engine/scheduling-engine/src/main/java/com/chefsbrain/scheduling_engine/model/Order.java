@@ -35,6 +35,7 @@ public class Order implements Comparable<Order> {
 
     private LocalDateTime orderPlacedTime;
     private LocalDateTime calculatedStartTime;
+    private LocalDateTime actualStartTime;
 
     private Long workspaceId;
 

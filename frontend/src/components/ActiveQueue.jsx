@@ -46,6 +46,29 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
     return () => clearInterval(interval);
   }, [fetchQueue]);
 
+  const handleStart = async (order) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/orders/start`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(order),
+        },
+      );
+
+      if (response.ok) {
+        onNotify(`Started Cooking: ${order.dishName}`, "success");
+        fetchQueue();
+      } else {
+        onNotify("Failed to start order.", "error");
+      }
+    } catch (error) {
+      console.error("Order start failed:", error);
+      onNotify("Error connecting to server.", "error");
+    }
+  };
+
   const handleComplete = async (order) => {
     try {
       const response = await fetch(
@@ -294,25 +317,37 @@ export default function ActiveQueue({ onNotify, workspaceId }) {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleComplete(order)}
-                      className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-slate-950 p-2 rounded-lg transition-all duration-300 active:scale-90 border border-emerald-500/20 hover:border-emerald-400 shadow-sm group/btn shrink-0 ml-1"
-                      title="Mark as Done"
-                    >
-                      <svg
-                        className="w-4 h-4 transition-transform group-hover/btn:scale-110"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="3"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </button>
+                    <div className="flex flex-col gap-2 shrink-0 ml-1 justify-center">
+                      {!order.actualStartTime ? (
+                        <button
+                          onClick={() => handleStart(order)}
+                          className="bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-slate-950 px-3 py-1.5 rounded-lg transition-all duration-300 active:scale-90 border border-cyan-500/20 hover:border-cyan-400 shadow-sm text-[10px] font-bold uppercase tracking-wider"
+                          title="Start Cooking"
+                        >
+                          Start
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleComplete(order)}
+                          className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-slate-950 p-2 rounded-lg transition-all duration-300 active:scale-90 border border-emerald-500/20 hover:border-emerald-400 shadow-sm group/btn flex items-center justify-center"
+                          title="Mark as Done"
+                        >
+                          <svg
+                            className="w-4 h-4 transition-transform group-hover/btn:scale-110"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="3"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
