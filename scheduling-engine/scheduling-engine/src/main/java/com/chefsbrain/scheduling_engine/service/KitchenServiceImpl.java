@@ -61,30 +61,46 @@ public class KitchenServiceImpl implements KitchenService {
     }
     
     @Override
+    public void markOrderStarted(Order order) {
+        order.setActualStartTime(LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
+        orderRepository.save(order);
+    }
+
+    @Override
     public void completeOrder(Order order) {
         getHeap(order.getWorkspaceId()).remove(order);
         getHistoryObj(order.getWorkspaceId()).addLast(order);
 
         // --- ADAPTIVE PREP TIME LEARNING ---
-        if (order.getOrderPlacedTime() != null && order.getDishId() != null) {
-            // Calculate actual time taken in minutes
-            long actualTimeMinutes = Duration.between(order.getOrderPlacedTime(), LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo"))).toMinutes();
+        if (order.getActualStartTime() != null && order.getDishId() != null) {
+            long actualTimeMinutes = Duration.between(order.getActualStartTime(), LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo"))).toMinutes();
 
-            // Validate the time is reasonable (ignore immediate accidental clicks)
             if (actualTimeMinutes > 0) {
                 dishRepository.findById(order.getDishId()).ifPresent(dish -> {
-                    // Exponential Moving Average (EMA)
-                    // 90% historical weight, 10% new actual time
-                    int updatedPrepTime = (int) Math.round((dish.getPrepTimeMinutes() * 0.9) + (actualTimeMinutes * 0.1));
+                    int baseExpectedTime = dish.getPrepTimeMinutes();
 
-                    // Safety check: Ensure the prep time doesn't drop below 1 minute
-                    updatedPrepTime = Math.max(1, updatedPrepTime);
+                    // Quantity Scaling: 1st item = 100%, each extra item = 25% more time
+                    double quantityScale = 1.0 + ((order.getQuantity() - 1) * 0.25);
+                    double expectedTotalTime = baseExpectedTime * quantityScale;
 
-                    dish.setPrepTimeMinutes(updatedPrepTime);
-                    dishRepository.save(dish);
+                    // Outlier Rejection: Between 30% and 300% of expected time
+                    if (actualTimeMinutes >= (expectedTotalTime * 0.3) && actualTimeMinutes <= (expectedTotalTime * 3.0)) {
 
-                    System.out.println("🧠 Adaptive Learning: " + dish.getName() +
-                            " took " + actualTimeMinutes + "m. Updated expected prep time to " + updatedPrepTime + "m.");
+                        // Reverse calculate the single portion time
+                        double singlePortionActualTime = actualTimeMinutes / quantityScale;
+
+                        int updatedPrepTime = (int) Math.round((baseExpectedTime * 0.9) + (singlePortionActualTime * 0.1));
+                        updatedPrepTime = Math.max(1, updatedPrepTime);
+
+                        dish.setPrepTimeMinutes(updatedPrepTime);
+                        dishRepository.save(dish);
+
+                        System.out.println("🧠 Adaptive Learning: " + dish.getName() +
+                                " took " + actualTimeMinutes + "m for qty " + order.getQuantity() +
+                                ". Updated expected single prep time to " + updatedPrepTime + "m.");
+                    } else {
+                        System.out.println("⚠️ Outlier ignored for " + dish.getName() + ": took " + actualTimeMinutes + "m");
+                    }
                 });
             }
         }

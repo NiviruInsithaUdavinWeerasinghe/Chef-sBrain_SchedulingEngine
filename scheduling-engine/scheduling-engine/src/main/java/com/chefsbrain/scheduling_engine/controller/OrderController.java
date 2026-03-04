@@ -77,6 +77,16 @@ public class OrderController {
     // --- SACHIN'S NEW ENDPOINTS (DLL Integration) ---
 
     /**
+    * Endpoint: POST /api/orders/start
+    * Action: Chef clicks "Start" on an order. Sets the actual start time.
+    */
+    @PostMapping("/start")
+    public ResponseEntity<String> startOrder(@RequestBody Order order) {
+        kitchenService.markOrderStarted(order);
+        return ResponseEntity.ok("Order marked as started.");
+    }
+
+    /**
     * Endpoint: POST /api/orders/complete
     * Action: Chef clicks "Done" on an order. Removes from active queue, adds to history.
     */

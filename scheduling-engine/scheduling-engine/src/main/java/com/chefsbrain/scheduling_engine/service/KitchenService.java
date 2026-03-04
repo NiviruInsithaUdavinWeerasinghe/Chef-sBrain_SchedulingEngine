@@ -7,6 +7,8 @@ public interface KitchenService {
 
     void addOrderToQueue(Order order);
 
+    void markOrderStarted(Order order);
+
     Order getNextUrgentTask(Long workspaceId);
 
     boolean checkAllergyConflict(Long dishId, List<String> customerAllergies);
