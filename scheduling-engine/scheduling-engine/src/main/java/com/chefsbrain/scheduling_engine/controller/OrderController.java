@@ -33,15 +33,20 @@ public class OrderController {
         // 1. Set the timestamp for when the order was received
         order.setOrderPlacedTime(LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
 
-        // --- NEW: Fetch the LATEST learned prep time from the database ---
+        // --- NEW: Fetch the LATEST learned prep time from the database and SCALE it ---
         if (order.getDishId() != null) {
             dishRepository.findById(order.getDishId()).ifPresent(dish -> {
-                // Override whatever the frontend sent with the smart, learned time
-                order.setPrepTimeMinutes(dish.getPrepTimeMinutes());
+                int basePrepTime = dish.getPrepTimeMinutes();
+
+                // Quantity Scaling: 1st item = 100%, each extra item = 25% more time
+                double quantityScale = 1.0 + ((order.getQuantity() - 1) * 0.25);
+                int scaledPrepTime = (int) Math.round(basePrepTime * quantityScale);
+
+                order.setPrepTimeMinutes(scaledPrepTime);
             });
         }
 
-        // 2. Calculate the "Start Time" (Logic: Order Time + Smart Prep Time)
+        // 2. Calculate the "Start Time" (Logic: Order Time + Scaled Smart Prep Time)
         order.setCalculatedStartTime(order.getOrderPlacedTime().plusMinutes(order.getPrepTimeMinutes()));
 
         // 3. Send to the "Brain" (Service Layer)

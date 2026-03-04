@@ -61,9 +61,27 @@ public class KitchenServiceImpl implements KitchenService {
     }
     
     @Override
-    public void markOrderStarted(Order order) {
-        order.setActualStartTime(LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
-        orderRepository.save(order);
+    public void markOrderStarted(Order incomingOrder) {
+        // Find the exact object living inside the in-memory heap
+        PriorityQueue<Order> heap = getHeap(incomingOrder.getWorkspaceId());
+        Order orderInHeap = null;
+
+        for (Order o : heap) {
+            if (o.getId().equals(incomingOrder.getId())) {
+                orderInHeap = o;
+                break;
+            }
+        }
+
+        // Update both the in-memory object and the database
+        if (orderInHeap != null) {
+            orderInHeap.setActualStartTime(LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
+            orderRepository.save(orderInHeap);
+        } else {
+            // Fallback just in case
+            incomingOrder.setActualStartTime(LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
+            orderRepository.save(incomingOrder);
+        }
     }
 
     @Override
